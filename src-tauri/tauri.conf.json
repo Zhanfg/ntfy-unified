@@ -1,0 +1,62 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "ntfy-unified",
+  "version": "0.0.1",
+  "identifier": "cc.axymorrsen.ntfyunified",
+  "build": {
+    "frontendDist": "../out",
+    "devUrl": "http://localhost:5173",
+    "beforeDevCommand": "pnpm run dev:ui",
+    "beforeBuildCommand": "pnpm run build:ui"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": [
+      {
+        "title": "ntfy-unified",
+        "label": "main",
+        "width": 1180,
+        "height": 760,
+        "minWidth": 700,
+        "minHeight": 540,
+        "skipTaskbar": false,
+        "resizable": true,
+        "fullscreen": false,
+        "decorations": true,
+        "visible": true,
+        "center": true,
+        "backgroundColor": "#f7f8fa",
+        "incognito": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src ipc: http://ipc.localhost; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'",
+      "devCsp": "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src ipc: http://ipc.localhost http://localhost:5173 ws://localhost:5173; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "createUpdaterArtifacts": false,
+    "targets": "all",
+    "publisher": "Zhanfg",
+    "windows": {
+      "nsis": {
+        "installMode": "both",
+        "compression": "lzma"
+      }
+    },
+    "macOS": {
+      "signingIdentity": null
+    },
+    "icon": [
+      "../assets/ntfy.ico",
+      "../assets/ntfy.icns",
+      "../assets/ntfy.png",
+      "../assets/ntfy-16x16.png",
+      "../assets/ntfy-32x32.png",
+      "../assets/ntfy-64x64.png",
+      "../assets/ntfy-128x128.png",
+      "../assets/ntfy-256x256.png"
+    ]
+  }
+}
