@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Bell,
   BellOff,
@@ -39,6 +39,9 @@ export function Client() {
   const [selected, setSelected] = useState<string | null>(null)
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [desktopLayout, setDesktopLayout] = useState(false)
+  const menuButton = useRef<HTMLButtonElement>(null)
+  const sidebarElement = useRef<HTMLDivElement>(null)
   const [editing, setEditing] = useState<Topic | null>(null)
   const [unreadOnly, setUnreadOnly] = useState(false)
   const [search, setSearch] = useState('')
@@ -65,15 +68,33 @@ export function Client() {
   }, [data.snapshot, selected])
 
   useEffect(() => {
-    if (!mobileOpen) return
+    const mq = window.matchMedia('(min-width: 768px)')
+    const sync = () => setDesktopLayout(mq.matches)
+    sync()
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
+  }, [])
+
+  const closeMobileNavigation = () => {
+    setMobileOpen(false)
+    menuButton.current?.focus()
+  }
+
+  useEffect(() => {
+    if (!mobileOpen || desktopLayout) return
+
+    sidebarElement.current?.querySelector<HTMLElement>('button, a[href]')?.focus()
 
     const onEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setMobileOpen(false)
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        closeMobileNavigation()
+      }
     }
 
     window.addEventListener('keydown', onEscape)
     return () => window.removeEventListener('keydown', onEscape)
-  }, [mobileOpen])
+  }, [mobileOpen, desktopLayout])
 
   const close = () => setDialog(null)
 
@@ -94,15 +115,20 @@ export function Client() {
   return (
     <main className="ntfy-app-surface relative flex min-h-dvh min-w-0 overflow-x-hidden text-sm">
       <button
+        aria-hidden={!mobileOpen}
         aria-label="Close navigation"
+        tabIndex={mobileOpen ? 0 : -1}
         className={cn(
           'fixed inset-0 z-30 bg-[#080f1a]/55 transition-opacity duration-200 md:hidden',
           mobileOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
         )}
-        onClick={() => setMobileOpen(false)}
+        onClick={closeMobileNavigation}
         type="button"
       />
       <div
+        aria-label={!desktopLayout && mobileOpen ? 'Subscription navigation' : undefined}
+        aria-modal={!desktopLayout && mobileOpen ? true : undefined}
+        role={!desktopLayout && mobileOpen ? 'dialog' : undefined}
         className={cn(
           'fixed inset-y-0 left-0 z-40 h-dvh shrink-0 transition-[transform,width,visibility] duration-200 md:sticky md:top-0 md:z-20 md:translate-x-0',
           mobileOpen ? 'visible translate-x-0' : 'invisible -translate-x-full md:visible',
@@ -110,35 +136,36 @@ export function Client() {
         )}
       >
         <div
-          aria-hidden={collapsed && !mobileOpen}
+          aria-hidden={desktopLayout ? collapsed : !mobileOpen}
           className="h-full overflow-hidden"
           id="ntfy-sidebar"
-          inert={collapsed && !mobileOpen}
+          inert={desktopLayout ? collapsed : !mobileOpen}
+          ref={sidebarElement}
         >
           <Sidebar
             addServer={() => {
-              setMobileOpen(false)
+              closeMobileNavigation()
               setDialog({ kind: 'server' })
             }}
             addTopic={() => {
-              setMobileOpen(false)
+              closeMobileNavigation()
               setEditing(null)
               setDialog({ kind: 'topic' })
             }}
             editServer={(id) => {
-              setMobileOpen(false)
+              closeMobileNavigation()
               setDialog({
                 kind: 'server',
                 server: snapshot.servers.find((item) => item.id === id),
               })
             }}
             preferences={() => {
-              setMobileOpen(false)
+              closeMobileNavigation()
               setDialog({ kind: 'preferences' })
             }}
             select={(id) => {
               setSelected(id)
-              setMobileOpen(false)
+              closeMobileNavigation()
             }}
             selected={selected}
             snapshot={snapshot}
@@ -169,6 +196,7 @@ export function Client() {
               aria-controls="ntfy-sidebar"
               aria-expanded={mobileOpen}
               aria-label="Open navigation"
+              ref={menuButton}
               className="shrink-0 md:hidden"
               onClick={() => setMobileOpen(true)}
               size="icon-sm"
