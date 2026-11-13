@@ -12,6 +12,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: alpha-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   frontend:
     runs-on: ubuntu-24.04
@@ -51,14 +55,14 @@ jobs:
         shell: bash
         run: |
           set -uo pipefail
-          test -x src-tauri/target/release/ntfy-unified
+          test -x src-tauri/target/release/ntfy_unified
           set +e
           timeout --signal=TERM --kill-after=3s 12s \
             dbus-run-session -- xvfb-run -a \
             env GDK_BACKEND=x11 WEBKIT_DISABLE_DMABUF_RENDERER=1 \
                 WEBKIT_DISABLE_COMPOSITING_MODE=1 \
                 RUST_BACKTRACE=1 \
-            ./src-tauri/target/release/ntfy-unified > smoke.log 2>&1
+            ./src-tauri/target/release/ntfy_unified > smoke.log 2>&1
           status=$?
           set -e
           tail -n 80 smoke.log || true
