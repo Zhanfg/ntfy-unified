@@ -1,0 +1,49 @@
+name: Bootstrap from pinned MIT upstream
+
+on:
+  push:
+    branches:
+      - feature/alpha-0.0.1-bootstrap
+    paths:
+      - .github/workflows/bootstrap-alpha.yml
+      - scripts/prepare_alpha.py
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Fetch immutable upstream and prepare Alpha
+        shell: bash
+        env:
+          UPSTREAM_SHA: b1035e69fd1b4d67df4490994c2cf289790cce64
+        run: |
+          set -euo pipefail
+          UPSTREAM_DIR="$RUNNER_TEMP/ntfy-upstream"
+          git clone --filter=blob:none --no-checkout https://github.com/rubix-studios-pty-ltd/ntfy-app.git "$UPSTREAM_DIR"
+          git -C "$UPSTREAM_DIR" fetch --depth 1 origin "$UPSTREAM_SHA"
+          git -C "$UPSTREAM_DIR" checkout --detach "$UPSTREAM_SHA"
+          test "$(git -C "$UPSTREAM_DIR" rev-parse HEAD)" = "$UPSTREAM_SHA"
+          rsync -a --exclude '.git' --exclude '.github' "$UPSTREAM_DIR/" ./
+          python3 scripts/prepare_alpha.py
+          test -f src-tauri/src/ntfy/service.rs
+          test -f LICENSE
+      - name: Commit imported code
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add --all
+          if git diff --cached --quiet; then
+            echo "No source change"
+          else
+            git commit -m "feat(alpha): import upstream ntfy client and apply lightweight branding"
+            git push origin "HEAD:$GITHUB_REF_NAME"
+          fi
