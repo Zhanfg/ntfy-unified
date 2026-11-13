@@ -104,7 +104,9 @@ jobs:
           retention-days: 7
       - name: Rust auth and notification unit regression
         shell: bash
-        run: cd src-tauri && cargo test --locked --lib ntfy:: -- --nocapture
+        run: |
+          cd src-tauri
+          cargo test --locked --lib ntfy:: -- --nocapture
       - name: Record actual Linux package size
         shell: bash
         run: |
