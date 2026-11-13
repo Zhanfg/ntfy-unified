@@ -1,7 +1,7 @@
 'use client'
 
-import Image from 'next/image'
 import {
+  Bell,
   BellOff,
   Clock,
   Inbox,
@@ -14,7 +14,6 @@ import {
   Workflow,
 } from 'lucide-react'
 
-import ntfy from '@/assets/ntfy.png'
 import { TopicIcon } from '@/components/ntfy/topic-icon'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -45,7 +44,7 @@ export function Sidebar({
   return (
     <aside className="sticky top-0 flex h-dvh w-60 shrink-0 flex-col gap-2.25 border-r border-border bg-card p-4">
       <div className="flex flex-row items-center gap-2 px-2 h-12 text-foreground select-none">
-        <Image alt="ntfy" className="size-6" loading="eager" src={ntfy} />
+        <Bell aria-hidden="true" className="size-6 text-primary" />
         <h1 className="text-base font-semibold">ntfy-unified</h1>
       </div>
 
