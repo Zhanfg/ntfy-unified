@@ -42,6 +42,7 @@ def tauri(t):
 rewrite("package.json", package)
 rewrite("src-tauri/tauri.conf.json", tauri)
 replace("src-tauri/Cargo.toml", 'name = "ntfy_app"', 'name = "ntfy_unified"')
+replace("src-tauri/Cargo.lock", 'name = "ntfy_app"\\nversion = "1.1.0"', 'name = "ntfy_unified"\\nversion = "0.0.1"')
 replace("src-tauri/Cargo.toml", 'version = "1.1.0"', 'version = "0.0.1"')
 replace("src-tauri/Cargo.toml", 'repository = "https://github.com/rubix-studios-pty-ltd/ntfy-app"',
         'repository = "https://github.com/Zhanfg/ntfy-unified"')
