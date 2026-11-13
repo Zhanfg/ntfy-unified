@@ -33,13 +33,12 @@ pub fn run() {
         }))
         .plugin(
             tauri_plugin_autostart::Builder::new()
-                .app_name("Ntfy")
+                .app_name("ntfy-unified")
                 .build(),
         )
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_process::init())
-        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .invoke_handler(commands::handler())
         .on_window_event(setup_window_events)

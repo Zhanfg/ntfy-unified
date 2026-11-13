@@ -1,7 +1,7 @@
 use ksni::TrayMethods;
 
 use crate::autostart::{is_autostart_enabled, toggle_autostart};
-use crate::tray::{check_updates, exit_app};
+use crate::tray::exit_app;
 use crate::windows::automation::open_automation_window;
 use crate::windows::logs::open_logs_window;
 use crate::windows::main::{toggle_main_window, window_tray_label};
@@ -21,7 +21,7 @@ impl ksni::Tray for NtfyTray {
     }
 
     fn title(&self) -> String {
-        "ntfy".to_string()
+        "ntfy-unified".to_string()
     }
 
     fn icon_name(&self) -> String {
@@ -105,14 +105,6 @@ impl ksni::Tray for NtfyTray {
             }
             .into(),
             MenuItem::Separator,
-            StandardItem::<Self> {
-                label: "Update".into(),
-                activate: Box::new(|tray: &mut Self| {
-                    check_updates(&tray.app);
-                }),
-                ..Default::default()
-            }
-            .into(),
             StandardItem::<Self> {
                 label: "Exit".into(),
                 activate: Box::new(|tray: &mut Self| {

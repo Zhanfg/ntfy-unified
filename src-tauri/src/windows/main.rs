@@ -101,7 +101,7 @@ fn create_main_window(app: &AppHandle) -> tauri::Result<tauri::WebviewWindow> {
     let url = WebviewUrl::App("/".into());
 
     WebviewWindowBuilder::new(app, "main", url)
-        .title("Ntfy")
+        .title("ntfy-unified")
         .inner_size(1180.0, 760.0)
         .min_inner_size(700.0, 540.0)
         .resizable(true)

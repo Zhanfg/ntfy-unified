@@ -3,7 +3,7 @@ use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent}
 use tauri::{AppHandle, Manager, Wry};
 
 use crate::autostart::{is_autostart_enabled, toggle_autostart};
-use crate::tray::{check_updates, exit_app};
+use crate::tray::exit_app;
 use crate::windows::automation::open_automation_window;
 use crate::windows::logs::open_logs_window;
 use crate::windows::main::{toggle_main_window, window_tray_label};
@@ -46,7 +46,6 @@ pub fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
 
     let schedule = MenuItem::with_id(app, "schedule", "Schedule", true, None::<&str>)?;
 
-    let updates = MenuItem::with_id(app, "check_updates", "Update", true, None::<&str>)?;
     let exit = MenuItem::with_id(app, "exit", "Exit", true, None::<&str>)?;
 
     let separator = PredefinedMenuItem::separator(app)?;
@@ -70,7 +69,6 @@ pub fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
             &tools_menu,
             &settings_menu,
             &separator,
-            &updates,
             &exit,
         ],
     )?;
@@ -81,7 +79,7 @@ pub fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
 
     let _tray = TrayIconBuilder::new()
         .icon(icon)
-        .tooltip("Ntfy")
+        .tooltip("ntfy-unified")
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(move |app, event| match event.id.as_ref() {
@@ -105,14 +103,11 @@ pub fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
                     let _ = check_item.set_checked(enabled);
                 }
             }
-            "config" => {
+            "schedule" => {
                 open_schedule_window(app);
             }
             "logs" => {
                 open_logs_window(app);
-            }
-            "check_updates" => {
-                check_updates(app);
             }
             "exit" => {
                 exit_app(app);
