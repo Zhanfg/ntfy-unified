@@ -41,12 +41,41 @@ jobs:
       - name: Tauri Linux libraries
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libpipewire-0.3-dev libgbm-dev patchelf
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libpipewire-0.3-dev libgbm-dev patchelf xvfb dbus-x11
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec tauri build --bundles deb
+      - name: Smoke test native Linux startup (headless X11)
+        shell: bash
+        run: |
+          set -uo pipefail
+          test -x src-tauri/target/release/ntfy-unified
+          set +e
+          timeout --signal=TERM --kill-after=3s 12s \
+            dbus-run-session -- xvfb-run -a \
+            env GDK_BACKEND=x11 WEBKIT_DISABLE_DMABUF_RENDERER=1 \
+                WEBKIT_DISABLE_COMPOSITING_MODE=1 \
+                RUST_BACKTRACE=1 \
+            ./src-tauri/target/release/ntfy-unified > smoke.log 2>&1
+          status=$?
+          set -e
+          tail -n 80 smoke.log || true
+          if [ "$status" -ne 124 ]; then
+            echo "Unexpected native process exit code: $status" >&2
+            exit 1
+          fi
+          echo "Native process remained running for 12 seconds."
+      - name: Record actual Linux package size
+        shell: bash
+        run: |
+          set -euo pipefail
+          file=src-tauri/target/release/bundle/deb/ntfy-unified_0.0.1_amd64.deb
+          test -s "$file"
+          size=$(stat -c '%s' "$file")
+          echo "Linux DEB bytes: $size"
+          echo "Linux DEB MiB: $(awk -v s="$size" 'BEGIN {printf "%.2f", s / 1048576}')"
       - uses: actions/upload-artifact@v4
         with:
           name: ntfy-unified-alpha-0.0.1-linux
