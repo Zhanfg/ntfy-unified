@@ -47,7 +47,7 @@ jobs:
       - name: Tauri Linux libraries
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libpipewire-0.3-dev libgbm-dev patchelf xvfb dbus-x11 gnome-keyring libsecret-tools
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libpipewire-0.3-dev libgbm-dev patchelf xvfb dbus-x11 gnome-keyring libsecret-tools xdotool imagemagick
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
@@ -91,6 +91,20 @@ jobs:
             exit 1
           fi
           echo "Native process remained running for 15 seconds with encrypted key storage."
+      - name: Narrow 360px drawer interaction and screenshot assertions
+        shell: bash
+        run: bash scripts/ci/drawer-smoke.sh ./src-tauri/target/release/ntfy_unified "$RUNNER_TEMP/g2-drawer"
+      - name: Upload 360px UI screenshots and smoke report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ntfy-unified-0.0.2-drawer-screenshots
+          path: ${{ runner.temp }}/g2-drawer/
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Rust auth and notification unit regression
+        shell: bash
+        run: cd src-tauri && cargo test --locked --lib ntfy:: -- --nocapture
       - name: Record actual Linux package size
         shell: bash
         run: |
