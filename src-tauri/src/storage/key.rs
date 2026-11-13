@@ -1,7 +1,7 @@
 use keyring::{Entry, Error};
 use zeroize::Zeroizing;
 
-const SERVICE: &str = "com.rubixstudios.ntfy";
+const SERVICE: &str = "cc.axymorrsen.ntfyunified";
 const ACCOUNT: &str = "sqlcipher-key-v1";
 
 pub fn database_key(existing_database: bool) -> Result<Zeroizing<String>, String> {

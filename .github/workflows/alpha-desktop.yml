@@ -45,32 +45,40 @@ jobs:
       - name: Tauri Linux libraries
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libpipewire-0.3-dev libgbm-dev patchelf xvfb dbus-x11
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libpipewire-0.3-dev libgbm-dev patchelf xvfb dbus-x11 gnome-keyring libsecret-tools
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec tauri build --bundles deb
-      - name: Smoke test native Linux startup (headless X11)
+      - name: Smoke test Linux startup with ephemeral OS keyring
         shell: bash
         run: |
           set -uo pipefail
           test -x src-tauri/target/release/ntfy_unified
           set +e
-          timeout --signal=TERM --kill-after=3s 12s \
-            dbus-run-session -- xvfb-run -a \
-            env GDK_BACKEND=x11 WEBKIT_DISABLE_DMABUF_RENDERER=1 \
-                WEBKIT_DISABLE_COMPOSITING_MODE=1 \
-                RUST_BACKTRACE=1 \
-            ./src-tauri/target/release/ntfy_unified > smoke.log 2>&1
+          timeout --signal=TERM --kill-after=3s 15s \
+            xvfb-run -a dbus-run-session -- bash -euo pipefail -c '
+              export HOME="$RUNNER_TEMP/ntfy-smoke-home"
+              mkdir -p "$HOME"
+              chmod 700 "$HOME"
+              keyring_password="$(head -c 32 /dev/urandom | base64)"
+              eval "$(printf "%s\n" "$keyring_password" | gnome-keyring-daemon --daemonize --login --components=secrets)"
+              unset keyring_password
+              printf ready | secret-tool store --label=ntfy-smoke-test app ntfy-unified-ci
+              test "$(secret-tool lookup app ntfy-unified-ci)" = ready
+              exec env GDK_BACKEND=x11 WEBKIT_DISABLE_DMABUF_RENDERER=1 \
+                       WEBKIT_DISABLE_COMPOSITING_MODE=1 RUST_BACKTRACE=1 \
+                       ./src-tauri/target/release/ntfy_unified
+            ' > smoke.log 2>&1
           status=$?
           set -e
           tail -n 80 smoke.log || true
           if [ "$status" -ne 124 ]; then
-            echo "Unexpected native process exit code: $status" >&2
+            echo "Unexpected Linux smoke process exit code: $status" >&2
             exit 1
           fi
-          echo "Native process remained running for 12 seconds."
+          echo "Native process remained running for 15 seconds with encrypted key storage."
       - name: Record actual Linux package size
         shell: bash
         run: |
