@@ -42,16 +42,16 @@ export function Sidebar({
   const status = (topic: Topic) => snapshot.statuses.find((status) => status.topicId === topic.id)
 
   return (
-    <aside className="sticky top-0 flex h-dvh w-60 shrink-0 flex-col gap-2.25 border-r border-border bg-card p-4">
+    <aside className="ntfy-sidebar-panel sticky top-0 flex h-dvh w-64 shrink-0 flex-col gap-2.5 border-r border-border p-4">
       <div className="flex flex-row items-center gap-2 px-2 h-12 text-foreground select-none">
         <Bell aria-hidden="true" className="size-6 text-primary" />
-        <h1 className="text-base font-semibold">ntfy-unified</h1>
+        <h1 className="text-base font-semibold tracking-tight">ntfy-unified</h1>
       </div>
 
       <Button
         aria-pressed={selected === null}
         className={cn(
-          'cursor-pointer duration-500 transition-all w-full justify-between font-normal text-muted-foreground',
+          'cursor-pointer duration-150 transition-colors w-full justify-between font-normal text-muted-foreground',
           selected === null &&
             'bg-accent text-accent-foreground hover:bg-accent dark:hover:bg-accent'
         )}
@@ -71,7 +71,7 @@ export function Sidebar({
         )}
       </Button>
 
-      <nav aria-label="Subscriptions" className="min-h-22.5 flex-1 overflow-y-auto">
+      <nav aria-label="Subscriptions" className="min-h-22.5 flex-1 overflow-y-auto overscroll-contain">
         {snapshot.servers.map((server) => (
           <section className="mb-3.5 gap-1 flex flex-col" key={server.id}>
             <div className="flex items-center justify-between px-2.25 text-[11px] font-[650] text-foreground">
@@ -81,7 +81,7 @@ export function Sidebar({
 
               <Button
                 aria-label={`Edit ${server.name}`}
-                className="cursor-pointer duration-500 transition-all text-muted-foreground hover:text-primary"
+                className="cursor-pointer duration-150 transition-colors text-muted-foreground hover:text-primary"
                 onClick={() => editServer(server.id)}
                 size="icon-xs"
                 variant="ghost"
@@ -98,7 +98,7 @@ export function Sidebar({
                   <Button
                     aria-pressed={selected === topic.id}
                     className={cn(
-                      'cursor-pointer duration-500 transition-all justify-start px-2.5 gap-2.5 text-left text-xs text-muted-foreground',
+                      'cursor-pointer duration-150 transition-colors justify-start px-2.5 gap-2.5 text-left text-xs text-muted-foreground',
                       selected === topic.id &&
                         'bg-accent text-accent-foreground hover:bg-accent dark:hover:bg-accent'
                     )}
@@ -160,7 +160,9 @@ export function Sidebar({
 
       <div className="border-t border-border pt-3 gap-1.5 flex flex-row">
         <Button
-          className="cursor-pointer duration-500 transition-all rounded"
+          aria-label="Add server"
+          title="Add server"
+          className="cursor-pointer duration-150 transition-colors rounded"
           onClick={addServer}
           size="icon-xs"
           variant="outline"
@@ -170,7 +172,9 @@ export function Sidebar({
 
         {snapshot.topics.length > 0 && (
           <Button
-            className="cursor-pointer duration-500 transition-all rounded"
+            aria-label="Add subscription"
+            title="Add subscription"
+            className="cursor-pointer duration-150 transition-colors rounded"
             onClick={addTopic}
             size="icon-xs"
             variant="outline"
@@ -181,50 +185,52 @@ export function Sidebar({
 
         <Button
           asChild
-          className="cursor-pointer duration-500 transition-all rounded"
+          className="cursor-pointer duration-150 transition-colors rounded"
           size="icon-xs"
           variant="outline"
         >
-          <a href="/automation/">
+          <a aria-label="Automations" title="Automations" href="/automation/">
             <Workflow className="size-3" />
           </a>
         </Button>
 
         <Button
           asChild
-          className="cursor-pointer duration-500 transition-all rounded"
+          className="cursor-pointer duration-150 transition-colors rounded"
           size="icon-xs"
           variant="outline"
         >
-          <a href="/logs/">
+          <a aria-label="Logs" title="Logs" href="/logs/">
             <ScrollText className="size-3" />
           </a>
         </Button>
 
         <Button
           asChild
-          className="cursor-pointer duration-500 transition-all rounded"
+          className="cursor-pointer duration-150 transition-colors rounded"
           size="icon-xs"
           variant="outline"
         >
-          <a href="/webhook/">
+          <a aria-label="Webhooks" title="Webhooks" href="/webhook/">
             <Webhook className="size-3" />
           </a>
         </Button>
 
         <Button
           asChild
-          className="cursor-pointer duration-500 transition-all rounded"
+          className="cursor-pointer duration-150 transition-colors rounded"
           size="icon-xs"
           variant="outline"
         >
-          <a href="/schedule/">
+          <a aria-label="Schedule" title="Schedule" href="/schedule/">
             <Clock className="size-3" />
           </a>
         </Button>
 
         <Button
-          className="cursor-pointer duration-500 transition-all rounded"
+          aria-label="Preferences"
+          title="Preferences"
+          className="cursor-pointer duration-150 transition-colors rounded"
           onClick={preferences}
           size="icon-xs"
           variant="outline"

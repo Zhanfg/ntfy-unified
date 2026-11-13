@@ -35,7 +35,7 @@ export function Card({ item, topic, serverName, refresh, remove }: Props) {
   const date = new Date(message.time * 1000)
 
   return (
-    <article className="border-border bg-card relative flex gap-3.25 rounded-[9px] border px-4.25 py-5 shadow-xs max-[700px]:gap-2.25 max-[700px]:px-3 max-[700px]:py-4">
+    <article className="ntfy-message-card relative flex gap-3 rounded-xl border border-border bg-card px-4 py-4 shadow-xs max-[700px]:gap-2.5 max-[700px]:px-3 max-[700px]:py-3.5">
       <div
         className={cn(
           'relative grid size-8.5 shrink-0 place-items-center rounded-[9px] text-[13px] font-semibold',
@@ -56,7 +56,7 @@ export function Card({ item, topic, serverName, refresh, remove }: Props) {
       </div>
 
       <div className="min-w-0 flex-1">
-        <div className="flex justify-between gap-2.5 pr-13 text-[9px] leading-normal text-muted-foreground max-[700px]:flex-col max-[700px]:gap-0.5">
+        <div className="flex justify-between gap-2.5 pr-14 text-[11px] leading-normal text-muted-foreground max-[700px]:flex-col max-[700px]:gap-1">
           <span>
             {serverName} <span className="px-1 text-muted-foreground">/ </span>
             <b className="font-[550] text-success-foreground">
@@ -76,17 +76,17 @@ export function Card({ item, topic, serverName, refresh, remove }: Props) {
 
         <div className="mt-2.5 flex items-center gap-2">
           {(message.priority ?? 3) >= 4 && (
-            <span className="rounded-sm bg-warning-soft px-1.25 py-0.5 text-[8px] text-warning-foreground">
+            <span className="rounded-sm bg-warning-soft px-1.25 py-0.5 text-[10px] text-warning-foreground">
               {message.priority === 5 ? 'Urgent' : 'High'}
             </span>
           )}
 
-          <h2 className="text-xs font-semibold truncate text-foreground">
+          <h2 className="truncate text-sm font-semibold leading-snug text-foreground">
             {message.title || topic?.displayName || message.topic}
           </h2>
         </div>
 
-        <p className="mt-1.5 text-[11px] leading-[1.8] whitespace-pre-wrap wrap-anywhere text-muted-foreground">
+        <p className="mt-1.5 whitespace-pre-wrap wrap-anywhere text-[13px] leading-relaxed text-muted-foreground">
           {message.message}
         </p>
 
@@ -94,7 +94,7 @@ export function Card({ item, topic, serverName, refresh, remove }: Props) {
           <div className="mt-2.5 flex flex-wrap gap-1.25">
             {message.tags.map((tag) => (
               <span
-                className="rounded border border-border bg-success-soft px-1.5 py-0.75 text-[8px] text-muted-foreground"
+                className="rounded border border-border bg-success-soft px-1.5 py-0.75 text-[10px] text-muted-foreground"
                 key={tag}
               >
                 {tag}
@@ -107,7 +107,7 @@ export function Card({ item, topic, serverName, refresh, remove }: Props) {
           <div className="mt-3 flex flex-wrap gap-3.25 text-[10px] text-primary">
             {safeLink(message.click) && (
               <Button
-                className="cursor-pointer duration-500 transition-all h-auto gap-1 p-0 has-[>svg]:px-0 text-[10px] font-normal whitespace-normal"
+                className="cursor-pointer duration-150 transition-colors h-auto gap-1 p-0 has-[>svg]:px-0 text-[10px] font-normal whitespace-normal"
                 onClick={() => void open(message.click as string)}
                 variant="link"
               >
@@ -118,7 +118,7 @@ export function Card({ item, topic, serverName, refresh, remove }: Props) {
 
             {message.attachment && safeLink(message.attachment.url) && (
               <Button
-                className="cursor-pointer duration-500 transition-all h-auto gap-1 p-0 has-[>svg]:px-0 text-[10px] font-normal whitespace-normal"
+                className="cursor-pointer duration-150 transition-colors h-auto gap-1 p-0 has-[>svg]:px-0 text-[10px] font-normal whitespace-normal"
                 disabled={expired}
                 onClick={() => {
                   const url = message.attachment?.url
@@ -135,7 +135,7 @@ export function Card({ item, topic, serverName, refresh, remove }: Props) {
             {message.actions.map((action, index) =>
               action && action.action === 'view' && safeLink(action.url) ? (
                 <Button
-                  className="cursor-pointer duration-500 transition-all h-auto gap-1 p-0 has-[>svg]:px-0 text-[10px] font-normal whitespace-normal"
+                  className="cursor-pointer duration-150 transition-colors h-auto gap-1 p-0 has-[>svg]:px-0 text-[10px] font-normal whitespace-normal"
                   key={`${action.label}-${index}`}
                   onClick={() => void open(action.url as string)}
                   variant="link"
@@ -145,7 +145,7 @@ export function Card({ item, topic, serverName, refresh, remove }: Props) {
                 </Button>
               ) : action && action.action === 'copy' && typeof action.value === 'string' ? (
                 <Button
-                  className="cursor-pointer duration-500 transition-all h-auto gap-1 p-0 has-[>svg]:px-0 text-[10px] font-normal whitespace-normal"
+                  className="cursor-pointer duration-150 transition-colors h-auto gap-1 p-0 has-[>svg]:px-0 text-[10px] font-normal whitespace-normal"
                   key={`${action.label}-${index}`}
                   onClick={async () => {
                     try {
@@ -169,7 +169,7 @@ export function Card({ item, topic, serverName, refresh, remove }: Props) {
         {!item.isRead && (
           <Button
             aria-label="Mark as read"
-            className="cursor-pointer duration-500 transition-all text-muted-foreground hover:text-primary"
+            className="cursor-pointer duration-150 transition-colors text-muted-foreground hover:text-primary"
             onClick={async () => {
               try {
                 await messageAction(item.rowId, null)
@@ -187,7 +187,7 @@ export function Card({ item, topic, serverName, refresh, remove }: Props) {
 
         <Button
           aria-label="Delete notification"
-          className="cursor-pointer duration-500 transition-all text-muted-foreground hover:text-primary"
+          className="cursor-pointer duration-150 transition-colors text-muted-foreground hover:text-primary"
           onClick={remove}
           size="icon-xs"
           variant="ghost"
