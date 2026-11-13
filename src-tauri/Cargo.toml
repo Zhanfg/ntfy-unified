@@ -1,0 +1,72 @@
+[package]
+name = "ntfy_unified"
+version = "0.0.1"
+authors = ["rubixvi"]
+description = "Desktop client for ntfy.sh and self-hosted ntfy instances on Windows, Linux, and macOS. Built with Rust, Tauri, and Next.js."
+license = "MIT"
+repository = "https://github.com/Zhanfg/ntfy-unified"
+edition = "2024"
+rust-version = "1.99.1"
+
+[build-dependencies]
+tauri-build = { version = "2.7.4", features = [] }
+
+[lib]
+name = "ntfy_core"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[dependencies]
+base64 = "0.23.1"
+chrono = "0.4.45"
+futures-util = "0.3.34"
+getrandom = "0.4.3"
+keyring = "4.2.0"
+reqwest = { version = "0.13.5", default-features = false, features = ["json", "stream", "rustls"] }
+rusqlite = { version = "0.41.1", features = ["bundled-sqlcipher-vendored-openssl"] }
+sanitize-filename = "0.6"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+system_shutdown = "4.1.0"
+tauri = { version = "2.12.5", features = ["tray-icon"] }
+tauri-plugin-notification = "2.8.1"
+tauri-plugin-opener = "2.7.3"
+tauri-plugin-process = "2.4.0"
+tauri-plugin-single-instance = "2"
+tauri-plugin-window-state = "2.5.0"
+tokio = { version = "1.54.1", features = ["macros", "net", "rt-multi-thread", "sync", "time"] }
+url = "2.5.8"
+uuid = { version = "1.29.2", features = ["v4"] }
+xcap = "0.9.10"
+zeroize = { version = "1.9", features = ["derive"] }
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62.2", features = [
+  "Win32_Foundation",
+  "Win32_Media_Audio",
+  "Win32_Media_Audio_Endpoints",
+  "Win32_System_Com",
+  "Win32_System_Com_StructuredStorage",
+  "Win32_System_Variant",
+] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+ksni = "0.3.7"
+volumecontrol = "0.1.4"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+volumecontrol = "0.1.4"
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-autostart = "2.7.0"
+tauri-plugin-updater = "2.14.1"
+
+[profile.dev]
+incremental = true
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
+opt-level = 3
+panic = "abort"
+strip = true
+incremental = false
