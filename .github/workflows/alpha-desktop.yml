@@ -76,7 +76,16 @@ jobs:
           status=$?
           set -e
           tail -n 80 smoke.log || true
-          if ! grep -q '^NTFY_NATIVE_LAUNCH            echo "Unexpected Linux smoke process exit code: $status" >&2
+          if ! grep -Fxq 'NTFY_NATIVE_LAUNCH' smoke.log; then
+            echo "Native app was never launched; a setup timeout is not success" >&2
+            exit 1
+          fi
+          if grep -Eq 'panicked at|Failed to setup app|Aborted' smoke.log; then
+            echo "Native process panicked during startup" >&2
+            exit 1
+          fi
+          if [ "$status" -ne 124 ]; then
+            echo "Unexpected Linux smoke process exit code: $status" >&2
             exit 1
           fi
           echo "Native process remained running for 15 seconds with encrypted key storage."
