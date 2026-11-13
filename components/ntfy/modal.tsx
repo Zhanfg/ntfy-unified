@@ -30,7 +30,7 @@ export function Modal({ title, description, children, close, busy = false }: Pro
     >
       <DialogContent
         aria-describedby={id}
-        className="max-h-[calc(100dvh-2rem)] overflow-y-auto border-border text-foreground shadow-2xl sm:max-w-md"
+        className="max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-2xl border-border bg-card text-foreground shadow-2xl sm:max-w-md"
         onEscapeKeyDown={(event) => {
           if (busy) event.preventDefault()
         }}
@@ -42,7 +42,7 @@ export function Modal({ title, description, children, close, busy = false }: Pro
         <DialogHeader>
           <DialogTitle className="text-[19px] tracking-[-0.3px]">{title}</DialogTitle>
 
-          <DialogDescription className="text-xs leading-[1.8] text-muted-foreground" id={id}>
+          <DialogDescription className="text-sm leading-relaxed text-muted-foreground" id={id}>
             {description}
           </DialogDescription>
         </DialogHeader>

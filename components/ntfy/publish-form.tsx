@@ -70,13 +70,13 @@ export function PublishForm({ topics, servers, selected, close }: Props) {
       >
         <fieldset className="flex min-w-0 flex-col gap-3.75" disabled={busy}>
           <div className="flex min-w-0 flex-col gap-1.75">
-            <Label className="text-[11px]" htmlFor={`${id}-topic`}>
+            <Label className="text-xs" htmlFor={`${id}-topic`}>
               Topic
             </Label>
 
             <Select disabled={busy} onValueChange={setTopicId} required value={topicId}>
               <SelectTrigger
-                className="cursor-pointer duration-500 transition-all w-full border-border bg-card text-xs text-foreground"
+                className="cursor-pointer duration-150 transition-colors w-full border-border bg-card text-sm text-foreground"
                 id={`${id}-topic`}
               >
                 <SelectValue placeholder="Select a topic" />
@@ -85,7 +85,7 @@ export function PublishForm({ topics, servers, selected, close }: Props) {
               <SelectContent position="popper">
                 {topics.map((topic) => (
                   <SelectItem
-                    className="cursor-pointer duration-500 transition-all"
+                    className="cursor-pointer duration-150 transition-colors"
                     key={topic.id}
                     value={topic.id}
                   >
@@ -97,12 +97,12 @@ export function PublishForm({ topics, servers, selected, close }: Props) {
           </div>
 
           <div className="flex flex-col gap-1.75">
-            <Label className="text-[11px]" htmlFor={`${id}-title`}>
+            <Label className="text-xs" htmlFor={`${id}-title`}>
               Title
             </Label>
 
             <Input
-              className="w-full min-w-0 rounded-md border border-border bg-card p-2.5 text-xs md:text-xs text-foreground"
+              className="w-full min-w-0 rounded-md border border-border bg-card p-2.5 text-sm text-foreground"
               id={`${id}-title`}
               maxLength={256}
               onChange={(event) => setTitle(event.target.value)}
@@ -112,12 +112,12 @@ export function PublishForm({ topics, servers, selected, close }: Props) {
           </div>
 
           <div className="flex flex-col gap-1.75">
-            <Label className="text-[11px]" htmlFor={`${id}-message`}>
+            <Label className="text-xs" htmlFor={`${id}-message`}>
               Message
             </Label>
 
             <Textarea
-              className="w-full min-w-0 rounded-md border border-border bg-card p-2.5 text-xs md:text-xs text-foreground resize-none"
+              className="w-full min-w-0 rounded-md border border-border bg-card p-2.5 text-sm text-foreground resize-none"
               id={`${id}-message`}
               maxLength={4096}
               onChange={(event) => setMessage(event.target.value)}
@@ -130,7 +130,7 @@ export function PublishForm({ topics, servers, selected, close }: Props) {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="flex min-w-0 flex-col gap-1.75">
-              <Label className="text-[11px]" htmlFor={`${id}-priority`}>
+              <Label className="text-xs" htmlFor={`${id}-priority`}>
                 Priority
               </Label>
 
@@ -140,26 +140,26 @@ export function PublishForm({ topics, servers, selected, close }: Props) {
                 value={String(priority)}
               >
                 <SelectTrigger
-                  className="cursor-pointer duration-500 transition-all w-full border-border bg-card text-xs text-foreground"
+                  className="cursor-pointer duration-150 transition-colors w-full border-border bg-card text-sm text-foreground"
                   id={`${id}-priority`}
                 >
                   <SelectValue placeholder="Select priority" />
                 </SelectTrigger>
 
                 <SelectContent position="popper">
-                  <SelectItem className="cursor-pointer duration-500 transition-all" value="1">
+                  <SelectItem className="cursor-pointer duration-150 transition-colors" value="1">
                     Minimum
                   </SelectItem>
-                  <SelectItem className="cursor-pointer duration-500 transition-all" value="2">
+                  <SelectItem className="cursor-pointer duration-150 transition-colors" value="2">
                     Low
                   </SelectItem>
-                  <SelectItem className="cursor-pointer duration-500 transition-all" value="3">
+                  <SelectItem className="cursor-pointer duration-150 transition-colors" value="3">
                     Default
                   </SelectItem>
-                  <SelectItem className="cursor-pointer duration-500 transition-all" value="4">
+                  <SelectItem className="cursor-pointer duration-150 transition-colors" value="4">
                     High
                   </SelectItem>
-                  <SelectItem className="cursor-pointer duration-500 transition-all" value="5">
+                  <SelectItem className="cursor-pointer duration-150 transition-colors" value="5">
                     Urgent
                   </SelectItem>
                 </SelectContent>
@@ -167,12 +167,12 @@ export function PublishForm({ topics, servers, selected, close }: Props) {
             </div>
 
             <div className="flex min-w-0 flex-col gap-1.75">
-              <Label className="text-[11px]" htmlFor={`${id}-tags`}>
+              <Label className="text-xs" htmlFor={`${id}-tags`}>
                 Tags
               </Label>
 
               <Input
-                className="w-full min-w-0 rounded-md border border-border bg-card p-2.5 text-xs md:text-xs text-foreground"
+                className="w-full min-w-0 rounded-md border border-border bg-card p-2.5 text-sm text-foreground"
                 id={`${id}-tags`}
                 onChange={(event) => setTags(event.target.value)}
                 placeholder="warning, backup"
@@ -193,7 +193,7 @@ export function PublishForm({ topics, servers, selected, close }: Props) {
 
         <div className="flex justify-end gap-2 pt-1.75">
           <Button
-            className="cursor-pointer duration-500 transition-all"
+            className="min-h-9 min-w-20 cursor-pointer transition-colors duration-150"
             disabled={busy}
             onClick={close}
             size="sm"
@@ -204,7 +204,7 @@ export function PublishForm({ topics, servers, selected, close }: Props) {
           </Button>
 
           <Button
-            className="cursor-pointer duration-500 transition-all"
+            className="min-h-9 min-w-20 cursor-pointer transition-colors duration-150"
             disabled={busy || !topicId}
             size="sm"
             type="submit"

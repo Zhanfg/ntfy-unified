@@ -47,15 +47,16 @@ export function Preferences({ close }: { close: () => void }) {
       <div className="mt-1.25 flex flex-col gap-4.5">
         <ThemeSelect />
 
-        <div className="flex items-center justify-between text-[11px]">
+        <div className="flex items-center justify-between text-xs">
           <div>
             <strong>Notification</strong>
-            <p className="mt-1.25 text-[11px] text-muted-foreground first-letter:uppercase">
-              Show message content
+            <p className="mt-1.25 text-xs text-muted-foreground">
+              Show message content in system notifications
             </p>
           </div>
 
           <Checkbox
+            aria-label="Show message title and content in system notifications"
             checked={preview}
             className="cursor-pointer"
             disabled={busy}
@@ -64,17 +65,22 @@ export function Preferences({ close }: { close: () => void }) {
           />
         </div>
 
+        <p className="rounded-lg bg-surface-subtle p-3 text-xs leading-relaxed text-muted-foreground">
+          This setting changes only system notification previews. It does not hide
+          messages in the app and is disabled by default.
+        </p>
+
         {permission !== 'Granted' && (
-          <div className="flex items-center justify-between text-[11px]">
+          <div className="flex items-center justify-between text-xs">
             <div>
               <strong>Permission</strong>
-              <p className="mt-1.25 text-[11px] text-muted-foreground first-letter:uppercase">
+              <p className="mt-1.25 text-xs text-muted-foreground first-letter:uppercase">
                 {permission}
               </p>
             </div>
 
             <Button
-              className="cursor-pointer duration-500 transition-all"
+              className="cursor-pointer duration-150 transition-colors"
               disabled={busy}
               onClick={async () => {
                 setBusy(true)
@@ -97,7 +103,7 @@ export function Preferences({ close }: { close: () => void }) {
 
         {error && (
           <p
-            className="rounded-md bg-danger-soft p-2.5 text-[11px] leading-[1.7] text-danger-foreground"
+            className="rounded-md bg-danger-soft p-2.5 text-xs leading-[1.7] text-danger-foreground"
             role="alert"
           >
             {error}
@@ -106,7 +112,7 @@ export function Preferences({ close }: { close: () => void }) {
 
         <div className="flex justify-end gap-2 pt-1.75">
           <Button
-            className="cursor-pointer duration-500 transition-all"
+            className="min-h-9 min-w-20 cursor-pointer transition-colors duration-150"
             disabled={busy}
             onClick={async () => {
               setBusy(true)
