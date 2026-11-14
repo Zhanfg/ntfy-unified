@@ -1,0 +1,41 @@
+package __TAURI_PACKAGE__
+
+import android.content.res.Configuration
+import android.os.Bundle
+import android.view.View
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+
+/**
+ * G3: true system-bar/display-cutout offsets, in current physical pixels.
+ * Padding android.R.id.content changes the actual WebView bounds, including
+ * on Android WebView builds where CSS env(safe-area-inset-*) incorrectly reads 0.
+ */
+class MainActivity : TauriActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        super.onCreate(savedInstanceState)
+        applyDynamicSystemInsets()
+    }
+
+    private fun applyDynamicSystemInsets() {
+        val content = findViewById<View>(android.R.id.content)
+        ViewCompat.setOnApplyWindowInsetsListener(content) { view, insets ->
+            val bars = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or
+                    WindowInsetsCompat.Type.displayCutout()
+            )
+            view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+            // Preserve insets for the WebView; never consume and re-pad twice.
+            insets
+        }
+        ViewCompat.requestApplyInsets(content)
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        // Display size/density, rotation and bar changes are dynamic.
+        ViewCompat.requestApplyInsets(findViewById(android.R.id.content))
+    }
+}
