@@ -1,5 +1,7 @@
 use tauri::Manager;
 
+#[cfg(target_os = "android")]
+mod appearance;
 #[cfg(desktop)]
 mod automation;
 #[cfg(desktop)]
@@ -39,6 +41,9 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_process::init())
         .invoke_handler(commands::handler());
+
+    #[cfg(target_os = "android")]
+    let builder = builder.plugin(appearance::init());
 
     // Desktop-only behavior is intentionally excluded from Android. No app
     // autostart, hidden tray process, desktop command automation or updater.

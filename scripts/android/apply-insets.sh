@@ -17,5 +17,11 @@ if not match or "TauriActivity" not in source:
 template = Path("android/overrides/MainActivity.kt.in").read_text()
 assert template.count("__TAURI_PACKAGE__") == 1
 dest.write_text(template.replace("__TAURI_PACKAGE__", match.group(1)))
+plugin_template = Path("android/overrides/AppearancePlugin.kt.in").read_text()
+if plugin_template.count("__TAURI_PACKAGE__") != 1:
+    raise SystemExit("Invalid AppearancePlugin template")
+plugin_dest = dest.with_name("AppearancePlugin.kt")
+plugin_dest.write_text(plugin_template.replace("__TAURI_PACKAGE__", match.group(1)))
 print("Applied native WindowInsets to generated Android Activity:", dest)
+print("Installed native appearance plugin:", plugin_dest)
 PY

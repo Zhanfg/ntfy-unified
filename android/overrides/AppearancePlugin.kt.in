@@ -1,0 +1,24 @@
+package __TAURI_PACKAGE__
+
+import android.app.Activity
+import app.tauri.annotation.Command
+import app.tauri.annotation.InvokeArg
+import app.tauri.annotation.TauriPlugin
+import app.tauri.plugin.Invoke
+import app.tauri.plugin.Plugin
+
+@InvokeArg
+class SetAppearanceArgs {
+    var dark: Boolean = true
+}
+
+/** Only accepts the resolved dark/light value; never credentials or message data. */
+@TauriPlugin
+class AppearancePlugin(private val activity: Activity) : Plugin(activity) {
+    @Command
+    fun setAppearance(invoke: Invoke) {
+        val args = invoke.parseArgs(SetAppearanceArgs::class.java)
+        (activity as MainActivity).setNtfyAppearance(args.dark)
+        invoke.resolve()
+    }
+}

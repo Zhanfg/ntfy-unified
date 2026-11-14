@@ -189,8 +189,8 @@ export function Client() {
         </Button>
       </div>
 
-      <section className="relative flex min-w-0 flex-1 flex-col px-4 py-5 md:p-6 lg:px-9">
-        <header className="flex min-h-11 items-center justify-between gap-3 pb-3">
+      <section data-ntfy-content className="relative flex min-w-0 flex-1 flex-col px-4 py-5 md:p-6 lg:px-9">
+        <header data-ntfy-header className="flex min-h-11 items-center justify-between gap-3 pb-3">
           <div className="flex min-w-0 items-center gap-3 text-foreground">
             <Button
               aria-controls="ntfy-sidebar"

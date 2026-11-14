@@ -2,6 +2,7 @@ import { type Metadata, type Viewport } from 'next'
 import { Toaster } from 'sonner'
 
 import { ThemeProvider } from '@/components/theme/provider'
+import { AndroidSystemBars } from '@/components/ntfy/android-system-bars'
 
 import '../styles/globals.css'
 
@@ -23,6 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         className="bg-background-main font-sans text-foreground antialiased"
       >
         <ThemeProvider attribute="class" defaultTheme="dark" disableTransitionOnChange enableSystem>
+          <AndroidSystemBars />
           {children}
           <Toaster richColors />
         </ThemeProvider>

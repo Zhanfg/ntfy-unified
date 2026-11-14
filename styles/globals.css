@@ -199,16 +199,20 @@
 }
 
 /*
- * G3: dynamic browser safe-area fallback. On Android the native Activity
- * moves the WebView itself into WindowInsets, so these are normally zero.
- * No fixed top/bottom bar heights or devicePixelRatio multipliers.
+ * G3 msg-011: Android has ONE inset authority: the native content container.
+ * CSS env() values remain observable for diagnostics but are NOT applied as
+ * a second layer of padding, regardless of ColorOS/WebView behavior.
  */
 .ntfy-app-surface {
   box-sizing: border-box;
-  padding-block-start: env(safe-area-inset-top, 0px);
-  padding-block-end: env(safe-area-inset-bottom, 0px);
-  padding-inline-start: env(safe-area-inset-left, 0px);
-  padding-inline-end: env(safe-area-inset-right, 0px);
+  --ntfy-css-safe-top: env(safe-area-inset-top, 0px);
+  --ntfy-css-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --ntfy-css-safe-left: env(safe-area-inset-left, 0px);
+  --ntfy-css-safe-right: env(safe-area-inset-right, 0px);
+  padding-block-start: 0;
+  padding-block-end: 0;
+  padding-inline-start: 0;
+  padding-inline-end: 0;
 }
 
 @media (max-width: 767px) and (pointer: coarse) {
