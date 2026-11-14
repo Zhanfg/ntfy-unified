@@ -71,6 +71,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Verify Android Cargo dependencies are locked
         run: cargo fetch --locked --manifest-path src-tauri/Cargo.toml --target aarch64-linux-android
+      - name: Assert mobile platform and notification permission boundaries
+        shell: bash
+        run: bash scripts/ci/g3-mobile-boundaries.sh
       - name: Initialize Tauri Android project without signing material
         run: pnpm exec tauri android init --ci --skip-targets-install
       - name: Build release Android arm64 libraries and unsigned APK
@@ -85,6 +88,11 @@ jobs:
             exit 1
           fi
           apk="${packages[0]}"
+          aapt2="$ANDROID_HOME/build-tools/36.0.0/aapt2"
+          test -x "$aapt2"
+          "$aapt2" dump permissions "$apk" | tee android-manifest-permissions.txt
+          grep -F 'android.permission.POST_NOTIFICATIONS' android-manifest-permissions.txt
+          echo "PASS: final merged Android manifest declares POST_NOTIFICATIONS"
           echo "Unsigned APK file: $apk"
           stat -c 'Unsigned APK bytes: %s' "$apk"
           sha256sum "$apk" | tee android-sha256.txt
@@ -102,5 +110,6 @@ jobs:
           path: |
             ${{ env.UNSIGNED_APK_PATH }}
             android-sha256.txt
+            android-manifest-permissions.txt
           if-no-files-found: error
           retention-days: 7
