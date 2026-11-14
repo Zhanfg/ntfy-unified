@@ -7,6 +7,60 @@ PKG="cc.axymorrsen.ntfyunified"
 : > "$OUT/results.tsv"
 record() { printf '%s\t%s\n' "$1" "$2" | tee -a "$OUT/results.tsv"; }
 fail() { record "FAIL" "$*"; exit 1; }
+# Preserve emulator diagnostics on every failure, including bounded recovery exhaustion.
+capture_diagnostics() {
+  local rc="$?"
+  if [ "$rc" -ne 0 ]; then
+    adb shell dumpsys window windows > "$OUT/window-failure.txt" 2>&1 || true
+    adb shell dumpsys activity activities > "$OUT/activity-failure.txt" 2>&1 || true
+    adb logcat -d -v threadtime -t 2500 > "$OUT/logcat-failure-long.txt" 2>&1 || true
+  fi
+}
+trap capture_diagnostics EXIT
+
+# Window focus and resumed activity are both checked. A system ANR dialog may
+# cover the app even while Android still reports the app as resumed.
+capture_focus() {
+  local density="$1" iteration="$2" windows activity focus resumed
+  windows="$(adb shell dumpsys window windows 2>&1 || true)"
+  activity="$(adb shell dumpsys activity activities 2>&1 || true)"
+  focus="$(printf '%s\\n' "$windows" | grep -m1 -E 'mCurrentFocus=' || true)"
+  resumed="$(printf '%s\\n' "$activity" | grep -m1 -E 'topResumedActivity=|mResumedActivity=' || true)"
+  printf 'density=%s probe=%s focus=%s resumed=%s\\n' "$density" "$iteration" "$focus" "$resumed" | tee -a "$OUT/focus-${density}.txt"
+  [[ "$focus" == *"$PKG"* && "$resumed" == *"$PKG"* ]]
+}
+
+# Recover only from a foreground interruption; never treat it as an app result.
+# The Wait button is preferred over Close app to avoid killing the launcher.
+recover_foreground() {
+  local density="$1" recovery="$2" dialog="$OUT/recovery-dialog-${density}.xml"
+  adb shell uiautomator dump /sdcard/ntfy-recovery.xml > "$OUT/recovery-dump-${density}.txt" 2>&1 || true
+  adb exec-out cat /sdcard/ntfy-recovery.xml > "$dialog" 2>/dev/null || true
+  local tap
+  tap="$(python3 - "$dialog" <<'PY_WAIT'
+import re, sys, xml.etree.ElementTree as ET
+try:
+    for node in ET.parse(sys.argv[1]).iter("node"):
+        if "Wait" in (node.get("text",""), node.get("content-desc","")):
+            m = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]", node.get("bounds",""))
+            if m:
+                a,b,c,d=map(int,m.groups())
+                print((a+c)//2, (b+d)//2)
+                break
+except (ET.ParseError, OSError):
+    pass
+PY_WAIT
+)"
+  if [[ -n "$tap" ]]; then
+    read -r x y <<< "$tap"
+    printf 'density=%s recovery=%s selecting Wait at %s,%s\\n' "$density" "$recovery" "$x" "$y" | tee -a "$OUT/focus-${density}.txt"
+    adb shell input tap "$x" "$y" || true
+  else
+    printf 'density=%s recovery=%s no Wait action found; bringing app forward\\n' "$density" "$recovery" | tee -a "$OUT/focus-${density}.txt"
+  fi
+  adb shell am start -W -n "$PKG/.MainActivity" >> "$OUT/foreground-recovery-${density}.txt" 2>&1 || true
+  sleep 3
+}
 adb wait-for-device
 adb shell settings put system screen_off_timeout 600000
 adb shell settings put global window_animation_scale 0
@@ -33,11 +87,21 @@ for density in 320 480; do
   done
   adb shell dumpsys meminfo "$PKG" > "$OUT/pss-${density}.txt"
   adb logcat -d -v brief -s NtfyInsets:I Tauri/Console:I chromium:I > "$OUT/logcat-${density}.txt"
-  adb exec-out screencap -p > "$OUT/screen-${density}.png"
-  # WebView's accessibility subtree may be empty for several seconds after relaunch.
-  # Require both target controls before accepting a dump. Bounded to 20 attempts.
+  # WebView readiness only counts while our app owns the foreground window.
+  # System/Launcher ANR overlays are recovered separately, at most three times.
   ready=0
-  for ui_attempt in $(seq 1 20); do
+  ui_attempt=0
+  recovery_attempt=0
+  while [ "$ui_attempt" -lt 20 ]; do
+    if ! capture_focus "$density" "check-${ui_attempt}-recovery-${recovery_attempt}"; then
+      if [ "$recovery_attempt" -ge 3 ]; then
+        fail "foreground recovery exhausted at density $density; see focus/window/logcat evidence"
+      fi
+      recovery_attempt=$((recovery_attempt + 1))
+      recover_foreground "$density" "$recovery_attempt"
+      continue
+    fi
+    ui_attempt=$((ui_attempt + 1))
     if adb shell uiautomator dump /sdcard/ntfy-quant.xml > "$OUT/uiautomator-${density}.txt" 2>&1 &&
        adb exec-out cat /sdcard/ntfy-quant.xml > "$OUT/hierarchy-${density}.xml" &&
        python3 - "$OUT/hierarchy-${density}.xml" <<'PY_READY'
@@ -62,7 +126,9 @@ PY_READY
     printf 'density=%s accessibility not ready (attempt %s/20)\n' "$density" "$ui_attempt" >> "$OUT/accessibility-${density}.txt"
     sleep 3
   done
-  test "$ready" -eq 1 || fail "WebView accessibility tree not ready at density $density after 20 bounded attempts (~60s)"
+  test "$ready" -eq 1 || fail "WebView accessibility tree not ready at density $density after 20 foreground-verified attempts (~60s polling)"
+  capture_focus "$density" "capture-final" || fail "foreground interrupted before screenshot at density $density"
+  adb exec-out screencap -p > "$OUT/screen-${density}.png"
   test -s "$OUT/hierarchy-${density}.xml" || fail "hierarchy empty at $density"
 done
 adb shell wm density reset
