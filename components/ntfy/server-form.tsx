@@ -82,12 +82,12 @@ export function ServerForm({ server, close, saved, remove }: Props) {
       <form className="mt-1.25 flex flex-col gap-4.5" onSubmit={submit}>
         <fieldset className="flex min-w-0 flex-col gap-3.75" disabled={busy}>
           <div className="flex flex-col gap-1.75">
-            <Label className="text-[11px]" htmlFor={`${id}-name`}>
+            <Label className="text-xs" htmlFor={`${id}-name`}>
               Display name
             </Label>
 
             <Input
-              className="w-full min-w-0 rounded-md border border-border bg-card p-2.5 text-xs md:text-xs text-foreground"
+              className="w-full min-w-0 rounded-md border border-border bg-card p-2.5 text-sm text-foreground"
               id={`${id}-name`}
               maxLength={100}
               onChange={(event) => setName(event.target.value)}
@@ -98,12 +98,12 @@ export function ServerForm({ server, close, saved, remove }: Props) {
           </div>
 
           <div className="flex flex-col gap-1.75">
-            <Label className="text-[11px]" htmlFor={`${id}-url`}>
+            <Label className="text-xs" htmlFor={`${id}-url`}>
               Server URL
             </Label>
 
             <Input
-              className="w-full min-w-0 rounded-md border border-border bg-card p-2.5 text-xs md:text-xs text-foreground"
+              className="w-full min-w-0 rounded-md border border-border bg-card p-2.5 text-sm text-foreground"
               id={`${id}-url`}
               onChange={(event) => setUrl(event.target.value)}
               placeholder="https://ntfy.example.com"
@@ -116,7 +116,7 @@ export function ServerForm({ server, close, saved, remove }: Props) {
           </div>
 
           <div className="flex flex-col gap-1.75">
-            <Label className="text-[11px]" htmlFor={`${id}-auth`}>
+            <Label className="text-xs" htmlFor={`${id}-auth`}>
               Authentication
             </Label>
 
@@ -131,20 +131,20 @@ export function ServerForm({ server, close, saved, remove }: Props) {
               value={kind}
             >
               <SelectTrigger
-                className="cursor-pointer duration-500 transition-all w-full border-border bg-card text-xs text-foreground"
+                className="cursor-pointer duration-150 transition-colors w-full border-border bg-card text-sm text-foreground"
                 id={`${id}-auth`}
               >
                 <SelectValue placeholder="Select authentication" />
               </SelectTrigger>
 
               <SelectContent position="popper">
-                <SelectItem className="cursor-pointer duration-500 transition-all" value="basic">
+                <SelectItem className="cursor-pointer duration-150 transition-colors" value="basic">
                   Username and password
                 </SelectItem>
-                <SelectItem className="cursor-pointer duration-500 transition-all" value="token">
+                <SelectItem className="cursor-pointer duration-150 transition-colors" value="token">
                   Access token
                 </SelectItem>
-                <SelectItem className="cursor-pointer duration-500 transition-all" value="none">
+                <SelectItem className="cursor-pointer duration-150 transition-colors" value="none">
                   Anonymous
                 </SelectItem>
               </SelectContent>
@@ -153,13 +153,13 @@ export function ServerForm({ server, close, saved, remove }: Props) {
 
           {kind === 'basic' && (
             <div className="flex flex-col gap-1.75">
-              <Label className="text-[11px]" htmlFor={`${id}-username`}>
+              <Label className="text-xs" htmlFor={`${id}-username`}>
                 Username
               </Label>
 
               <Input
                 autoComplete="username"
-                className="w-full min-w-0 rounded-md border border-border bg-card p-2.5 text-xs md:text-xs text-foreground"
+                className="w-full min-w-0 rounded-md border border-border bg-card p-2.5 text-sm text-foreground"
                 id={`${id}-username`}
                 onChange={(event) => setUsername(event.target.value)}
                 required
@@ -171,13 +171,13 @@ export function ServerForm({ server, close, saved, remove }: Props) {
 
           {kind !== 'none' && (
             <div className="flex flex-col gap-1.75">
-              <Label className="text-[11px]" htmlFor={`${id}-secret`}>
+              <Label className="text-xs" htmlFor={`${id}-secret`}>
                 {kind === 'basic' ? 'Password' : 'Access token'}
               </Label>
 
               <Input
                 autoComplete={kind === 'basic' ? 'current-password' : 'off'}
-                className="w-full min-w-0 rounded-md border border-border bg-card p-2.5 text-xs md:text-xs text-foreground"
+                className="w-full min-w-0 rounded-md border border-border bg-card p-2.5 text-sm text-foreground"
                 id={`${id}-secret`}
                 onChange={(event) => setSecret(event.target.value)}
                 placeholder={retained ? 'Leave blank to keep saved credentials' : ''}
@@ -189,7 +189,7 @@ export function ServerForm({ server, close, saved, remove }: Props) {
           )}
 
           {kind === 'none' && (
-            <p className="text-[11px] leading-[1.8] text-muted-foreground">
+            <p className="text-xs leading-[1.8] text-muted-foreground">
               Anonymous access follows the server’s topic permissions. Public topics can be read by
               other users.
             </p>
@@ -207,7 +207,7 @@ export function ServerForm({ server, close, saved, remove }: Props) {
 
         {server && remove && (
           <Button
-            className="cursor-pointer duration-500 transition-all mt-0.75 h-auto justify-start gap-1.75 p-0 has-[>svg]:px-0 text-[11px] text-danger-foreground"
+            className="cursor-pointer duration-150 transition-colors mt-0.75 h-auto justify-start gap-1.75 p-0 has-[>svg]:px-0 text-xs text-danger-foreground"
             disabled={busy}
             onClick={remove}
             type="button"
@@ -220,7 +220,7 @@ export function ServerForm({ server, close, saved, remove }: Props) {
 
         <div className="flex justify-end gap-2 pt-1.75">
           <Button
-            className="cursor-pointer duration-500 transition-all"
+            className="min-h-9 min-w-20 cursor-pointer transition-colors duration-150"
             disabled={busy}
             onClick={close}
             size="sm"
@@ -231,7 +231,7 @@ export function ServerForm({ server, close, saved, remove }: Props) {
           </Button>
 
           <Button
-            className="cursor-pointer duration-500 transition-all"
+            className="min-h-9 min-w-20 cursor-pointer transition-colors duration-150"
             disabled={busy}
             size="sm"
             type="submit"

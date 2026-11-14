@@ -1,23 +1,46 @@
 # ntfy-unified
 
-A lightweight desktop-first ntfy client. Alpha 0.0.1 uses the existing MIT-licensed
-Rubix Studios Ntfy App and preserves its Rust/Tauri ntfy transport,
-SQLite persistence, notifications and React/Next.js interface.
+Lightweight desktop-first ntfy client. The original Rust/Tauri transport,
+SQLCipher persistence, native notifications and React/Next.js UI originate from
+the MIT-licensed [Rubix Studios ntfy-app](https://github.com/rubix-studios-pty-ltd/ntfy-app).
 
-Status: Alpha source integration. CI packages are unsigned test builds;
-runtime validation and six-platform support are NOT yet claimed.
+## Release stages
 
-Build with Node 24, pnpm, Rust stable and Tauri OS dependencies:
-    corepack enable
-    pnpm install --frozen-lockfile
-    pnpm run typecheck
-    pnpm exec tauri build
+- **0.0.1 G1 passed:** Linux desktop self-hosted ntfy E2E independently verified
+  by the external supervisor. CI built Windows and Linux installers.
+- **0.0.2 G2 in progress:** responsive React inbox/sidebar, graphite-blue
+  design tokens, accessible controls, reduced-motion styling and light animation.
+  Existing ntfy protocol and storage code remain unchanged.
+- 0.0.3: Android native adaptation.
+- 0.0.4: reconnect/recovery/performance improvements.
+- 0.1.0: six-platform build matrix, with build and device verification statuses
+  recorded separately for each platform.
 
-Security: The original updater endpoint is disabled. Keep ntfy topics access-controlled.
-Upstream supports local automations capable of running commands; enable them only
-for trusted topics. Do not store passwords or API keys in this repository.
+This is a desktop-first alpha. Passing CI does not imply physical-device validation
+on other platforms. See [Issue #2](https://github.com/Zhanfg/ntfy-unified/issues/2)
+and [PR #1](https://github.com/Zhanfg/ntfy-unified/pull/1).
 
-Source: https://github.com/rubix-studios-pty-ltd/ntfy-app
-Pinned upstream commit: b1035e69fd1b4d67df4490994c2cf289790cce64
-License: MIT; preserve the original LICENSE and attribution.
-See docs/UPSTREAM.md for provenance and docs/ALPHA.md for acceptance criteria.
+## Build
+
+Requires Node 24, pnpm, Rust stable and OS-specific Tauri dependencies.
+
+```sh
+corepack enable
+pnpm install --frozen-lockfile
+pnpm run typecheck
+pnpm run build:ui
+pnpm exec tauri build
+```
+
+## Security and licensing
+
+- The app requires HTTPS and OS credential services. The SQLCipher database has
+  no plaintext fallback; user secrets are never part of this repository.
+- Inherited automations can execute commands, so use trusted access-controlled topics.
+- The upstream updater and its endpoints are removed from this fork.
+- **No Telegram/GPL code is copied.** UI changes use existing permissively
+  licensed dependencies without adding a new animation engine.
+- The Rubix Studios MIT license and copyright must be retained.
+
+Source commit: `b1035e69fd1b4d67df4490994c2cf289790cce64`.
+See `docs/UPSTREAM.md` and `docs/ALPHA.md`.

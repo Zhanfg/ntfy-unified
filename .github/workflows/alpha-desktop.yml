@@ -1,4 +1,4 @@
-name: Alpha 0.0.1 desktop CI
+name: Alpha 0.0.2 desktop CI
 
 on:
   pull_request:
@@ -47,7 +47,7 @@ jobs:
       - name: Tauri Linux libraries
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libpipewire-0.3-dev libgbm-dev patchelf xvfb dbus-x11 gnome-keyring libsecret-tools
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libpipewire-0.3-dev libgbm-dev patchelf xvfb dbus-x11 gnome-keyring libsecret-tools xdotool imagemagick
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
@@ -91,18 +91,34 @@ jobs:
             exit 1
           fi
           echo "Native process remained running for 15 seconds with encrypted key storage."
+      - name: Narrow 360px drawer interaction and screenshot assertions
+        shell: bash
+        run: bash scripts/ci/drawer-smoke.sh ./src-tauri/target/release/ntfy_unified "$RUNNER_TEMP/g2-drawer"
+      - name: Upload 360px UI screenshots and smoke report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ntfy-unified-0.0.2-drawer-screenshots
+          path: ${{ runner.temp }}/g2-drawer/
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Rust auth and notification unit regression
+        shell: bash
+        run: |
+          cd src-tauri
+          cargo test --locked --lib ntfy:: -- --nocapture
       - name: Record actual Linux package size
         shell: bash
         run: |
           set -euo pipefail
-          file=src-tauri/target/release/bundle/deb/ntfy-unified_0.0.1_amd64.deb
+          file=src-tauri/target/release/bundle/deb/ntfy-unified_0.0.2_amd64.deb
           test -s "$file"
           size=$(stat -c '%s' "$file")
           echo "Linux DEB bytes: $size"
           echo "Linux DEB MiB: $(awk -v s="$size" 'BEGIN {printf "%.2f", s / 1048576}')"
       - uses: actions/upload-artifact@v4
         with:
-          name: ntfy-unified-alpha-0.0.1-linux
+          name: ntfy-unified-alpha-0.0.2-linux
           path: src-tauri/target/release/bundle/deb/*.deb
           if-no-files-found: error
           retention-days: 7
@@ -125,7 +141,7 @@ jobs:
       - run: pnpm exec tauri build --bundles nsis
       - uses: actions/upload-artifact@v4
         with:
-          name: ntfy-unified-alpha-0.0.1-windows
+          name: ntfy-unified-alpha-0.0.2-windows
           path: src-tauri/target/release/bundle/nsis/*.exe
           if-no-files-found: error
           retention-days: 7

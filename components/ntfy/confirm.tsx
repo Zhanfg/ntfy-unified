@@ -21,7 +21,7 @@ export function Confirm({ title, description, action, close }: Props) {
       <div className="mt-1.25 flex flex-col gap-4.5">
         {error && (
           <p
-            className="rounded-md bg-danger-soft p-2.5 text-[11px] leading-[1.7] text-danger-foreground"
+            className="rounded-md bg-danger-soft p-2.5 text-xs leading-[1.7] text-danger-foreground"
             role="alert"
           >
             {error}
@@ -30,7 +30,7 @@ export function Confirm({ title, description, action, close }: Props) {
 
         <div className="flex justify-end gap-2 pt-1.75">
           <Button
-            className="cursor-pointer duration-500 transition-all"
+            className="min-h-9 min-w-20 cursor-pointer transition-colors duration-150"
             disabled={busy}
             onClick={close}
             size="sm"
@@ -40,7 +40,7 @@ export function Confirm({ title, description, action, close }: Props) {
           </Button>
 
           <Button
-            className="cursor-pointer duration-500 transition-all"
+            className="min-h-9 min-w-20 cursor-pointer transition-colors duration-150"
             disabled={busy}
             onClick={async () => {
               setBusy(true)

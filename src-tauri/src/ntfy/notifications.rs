@@ -22,44 +22,50 @@ pub(crate) async fn process_notification(
     .await?;
 
     if !fresh {
+        super::diagnostics::stage("receipt_duplicate_no_notification");
         return Ok(());
     }
 
+    super::diagnostics::stage("receipt_stored");
     let _ = app.emit("ntfy:changed", ());
 
     if message.event != "message" {
+        super::diagnostics::stage("non_message_event_no_notification");
         return Ok(());
     }
 
-    if !topic.muted && should_show_notification(app).await? {
-        let title = message
-            .title
-            .as_deref()
-            .filter(|title| !title.is_empty())
-            .unwrap_or(&message.topic);
-
+    if topic.muted {
+        super::diagnostics::stage("notification_suppressed_muted");
+    } else if should_show_notification(app).await? {
         let preview = run(app.state::<DbState>(), |connection| {
             Ok(repo::ntfy::meta(connection, "notification_preview")?.as_deref() == Some("1"))
         })
         .await?;
 
-        let mut builder = app
-            .notification()
-            .builder()
-            .title(if preview { title } else { "Ntfy" });
-
-        builder = builder.body(if preview {
-            &message.message
+        super::diagnostics::stage(if preview {
+            "notification_attempt_preview_on"
         } else {
-            "New notification. Open Ntfy to view it."
+            "notification_attempt_preview_off"
         });
 
+        let (display_title, display_body) = notification_content(message, preview);
+        let builder = app
+            .notification()
+            .builder()
+            .title(display_title)
+            .body(display_body);
+
         if builder.show().is_err() {
+            super::diagnostics::stage("notification_native_error");
             let _ = app.emit(
                 "ntfy:delivery-error",
                 "Native notification delivery failed. Check operating system permissions.",
             );
+        } else {
+            super::diagnostics::stage("notification_native_accepted");
         }
+    } else {
+        super::diagnostics::stage("notification_suppressed_schedule");
     }
 
     if let Err(_error) = handle_notification(
@@ -117,4 +123,52 @@ async fn should_show_notification(app: &AppHandle) -> Result<bool, String> {
         .ok_or_else(|| "Invalid schedule end time".to_string())?;
 
     Ok(current >= u32::from(start) && current < u32::from(end))
+}
+
+fn notification_content<'a>(message: &'a Message, preview: bool) -> (&'a str, &'a str) {
+    if preview {
+        let title = message
+            .title
+            .as_deref()
+            .filter(|title| !title.is_empty())
+            .unwrap_or(&message.topic);
+        (title, &message.message)
+    } else {
+        ("Ntfy", "New notification. Open Ntfy to view it.")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample_message() -> Message {
+        serde_json::from_value(serde_json::json!({
+            "id": "synthetic-id",
+            "time": 1,
+            "event": "message",
+            "topic": "synthetic-topic",
+            "title": "Synthetic title",
+            "message": "Synthetic body"
+        }))
+        .unwrap()
+    }
+
+    #[test]
+    fn preview_off_remains_generic_and_private() {
+        let message = sample_message();
+        assert_eq!(
+            notification_content(&message, false),
+            ("Ntfy", "New notification. Open Ntfy to view it.")
+        );
+    }
+
+    #[test]
+    fn preview_on_shows_payload_without_changing_eligibility() {
+        let message = sample_message();
+        assert_eq!(
+            notification_content(&message, true),
+            ("Synthetic title", "Synthetic body")
+        );
+    }
 }

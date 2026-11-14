@@ -130,13 +130,31 @@ pub async fn verify_account(
     base: &str,
     credentials: &Credentials,
 ) -> Result<(), String> {
-    let response = checked(authenticate(
-        client
-            .get(endpoint(base, "v1/account")?)
-            .timeout(Duration::from_secs(20)),
-        credentials,
-    )?)
-    .await?;
+    // Production always applies the HTTPS-only URL validator.
+    verify_account_at(client, endpoint(base, "v1/account")?, credentials).await
+}
+
+// Only the hermetic unit test may supply a loopback HTTP endpoint.
+async fn verify_account_at(
+    client: &Client,
+    url: Url,
+    credentials: &Credentials,
+) -> Result<(), String> {
+    let request = authenticate(client.get(url).timeout(Duration::from_secs(20)), credentials)?;
+    let response = send(request).await?;
+    if !response.status().is_success() {
+        if credentials.auth_kind == "token" {
+            super::diagnostics::stage(match response.status().as_u16() {
+                401 => "token_http_401",
+                403 => "token_http_403",
+                _ => "token_http_other_error",
+            });
+        }
+        return Err(status_error(response.status()));
+    }
+    if credentials.auth_kind == "token" {
+        super::diagnostics::stage("token_account_verified_http_2xx");
+    }
 
     let mut stream = response.bytes_stream();
 
@@ -201,4 +219,84 @@ pub async fn verify_topic(
         .unwrap_or_else(|| chrono::Utc::now().timestamp());
 
     Ok(timestamp)
+}
+
+// Tests use synthetic credentials and a loopback mock; no user/server token is needed.
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
+
+    #[tokio::test]
+    async fn token_is_sent_verbatim_as_bearer_and_account_is_accepted() {
+        const TEST_TOKEN: &str = "synthetic-token-for-test-only";
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = Url::parse(&format!(
+            "http://{}/v1/account",
+            listener.local_addr().unwrap()
+        ))
+        .unwrap();
+
+        let mock = std::thread::spawn(move || {
+            let (mut socket, _) = listener.accept().unwrap();
+            socket.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+
+            let mut received = Vec::new();
+            let mut buf = [0u8; 2048];
+            while !received.windows(4).any(|bytes| bytes == b"\r\n\r\n") {
+                let read = socket.read(&mut buf).unwrap();
+                assert!(read > 0, "request closed before complete HTTP headers");
+                received.extend_from_slice(&buf[..read]);
+                assert!(received.len() < 16 * 1024);
+            }
+            let text = String::from_utf8(received).unwrap();
+            assert!(text.starts_with("GET /v1/account HTTP/1.1"));
+            let auth = text
+                .lines()
+                .find(|line| line.to_ascii_lowercase().starts_with("authorization:"))
+                .expect("Bearer Authorization header missing");
+            assert_eq!(auth.trim(), format!("authorization: Bearer {TEST_TOKEN}").as_str());
+
+            let payload = r#"{"username":"ops","limits":{"messages":100}}"#;
+            let reply = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                payload.len(),
+                payload
+            );
+            socket.write_all(reply.as_bytes()).unwrap();
+        });
+
+        let credentials = Credentials {
+            auth_kind: "token".into(),
+            username: String::new(),
+            secret: TEST_TOKEN.into(),
+        };
+        verify_account_at(&client().unwrap(), url, &credentials)
+            .await
+            .unwrap();
+        mock.join().unwrap();
+    }
+
+    #[test]
+    fn token_request_does_not_change_auth_kind_or_drop_secret() {
+        let credentials = Credentials {
+            auth_kind: "token".into(),
+            username: String::new(),
+            secret: "synthetic-token-for-test-only".into(),
+        };
+        let request = authenticate(
+            Client::new().get("https://example.invalid/v1/account"),
+            &credentials,
+        )
+        .unwrap()
+        .build()
+        .unwrap();
+        let auth = request
+            .headers()
+            .get(reqwest::header::AUTHORIZATION)
+            .unwrap();
+        assert_eq!(auth.as_bytes(), b"Bearer synthetic-token-for-test-only");
+        assert!(auth.is_sensitive());
+    }
 }

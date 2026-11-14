@@ -1,3 +1,4 @@
+pub(crate) mod diagnostics;
 pub mod http;
 pub mod models;
 pub mod notifications;
