@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Bell,
   BellOff,
   CheckCheck,
   Inbox,
+  Menu,
   PanelLeftClose,
   PanelLeftOpen,
   Pencil,
@@ -37,6 +38,10 @@ const empty: Snapshot = { servers: [], topics: [], statuses: [], encrypted: fals
 export function Client() {
   const [selected, setSelected] = useState<string | null>(null)
   const [collapsed, setCollapsed] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const [desktopLayout, setDesktopLayout] = useState(false)
+  const menuButton = useRef<HTMLButtonElement>(null)
+  const sidebarElement = useRef<HTMLDivElement>(null)
   const [editing, setEditing] = useState<Topic | null>(null)
   const [unreadOnly, setUnreadOnly] = useState(false)
   const [search, setSearch] = useState('')
@@ -62,6 +67,35 @@ export function Client() {
       setSelected(null)
   }, [data.snapshot, selected])
 
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 768px)')
+    const sync = () => setDesktopLayout(mq.matches)
+    sync()
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
+  }, [])
+
+  const closeMobileNavigation = () => {
+    setMobileOpen(false)
+    menuButton.current?.focus()
+  }
+
+  useEffect(() => {
+    if (!mobileOpen || desktopLayout) return
+
+    sidebarElement.current?.querySelector<HTMLElement>('button, a[href]')?.focus()
+
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        closeMobileNavigation()
+      }
+    }
+
+    window.addEventListener('keydown', onEscape)
+    return () => window.removeEventListener('keydown', onEscape)
+  }, [mobileOpen, desktopLayout])
+
   const close = () => setDialog(null)
 
   const perform = async (action: () => Promise<void>) => {
@@ -79,33 +113,60 @@ export function Client() {
   }
 
   return (
-    <main className="flex min-h-dvh text-sm">
-      <div
+    <main className="ntfy-app-surface relative flex min-h-dvh min-w-0 overflow-x-hidden text-sm">
+      <button
+        aria-hidden={!mobileOpen}
+        aria-label="Close navigation"
+        tabIndex={mobileOpen ? 0 : -1}
         className={cn(
-          'sticky top-0 z-20 h-dvh shrink-0 transition-[width] duration-300',
-          collapsed ? 'w-0' : 'w-60'
+          'fixed inset-0 z-30 bg-[#080f1a]/55 transition-opacity duration-200 md:hidden',
+          mobileOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
+        )}
+        onClick={closeMobileNavigation}
+        type="button"
+      />
+      <div
+        aria-label={!desktopLayout && mobileOpen ? 'Subscription navigation' : undefined}
+        aria-modal={!desktopLayout && mobileOpen ? true : undefined}
+        role={!desktopLayout && mobileOpen ? 'dialog' : undefined}
+        className={cn(
+          'fixed inset-y-0 left-0 z-40 h-dvh shrink-0 transition-[transform,width,visibility] duration-200 md:sticky md:top-0 md:z-20 md:translate-x-0',
+          mobileOpen ? 'visible translate-x-0' : 'invisible -translate-x-full md:visible',
+          collapsed ? 'w-64 md:w-0' : 'w-64 md:w-64'
         )}
       >
         <div
-          aria-hidden={collapsed}
+          aria-hidden={desktopLayout ? collapsed : !mobileOpen}
           className="h-full overflow-hidden"
           id="ntfy-sidebar"
-          inert={collapsed}
+          inert={desktopLayout ? collapsed : !mobileOpen}
+          ref={sidebarElement}
         >
           <Sidebar
-            addServer={() => setDialog({ kind: 'server' })}
+            addServer={() => {
+              closeMobileNavigation()
+              setDialog({ kind: 'server' })
+            }}
             addTopic={() => {
+              closeMobileNavigation()
               setEditing(null)
               setDialog({ kind: 'topic' })
             }}
-            editServer={(id) =>
+            editServer={(id) => {
+              closeMobileNavigation()
               setDialog({
                 kind: 'server',
                 server: snapshot.servers.find((item) => item.id === id),
               })
-            }
-            preferences={() => setDialog({ kind: 'preferences' })}
-            select={setSelected}
+            }}
+            preferences={() => {
+              closeMobileNavigation()
+              setDialog({ kind: 'preferences' })
+            }}
+            select={(id) => {
+              setSelected(id)
+              closeMobileNavigation()
+            }}
             selected={selected}
             snapshot={snapshot}
           />
@@ -115,7 +176,7 @@ export function Client() {
           aria-controls="ntfy-sidebar"
           aria-expanded={!collapsed}
           aria-label={collapsed ? 'Expand' : 'Collapse'}
-          className="absolute top-6 right-0 z-10 translate-x-1/2 cursor-pointer border border-border bg-card transition-colors duration-300"
+          className="absolute top-6 right-0 z-10 hidden translate-x-1/2 cursor-pointer border border-border bg-card transition-colors duration-150 md:inline-flex"
           onClick={() => setCollapsed((value) => !value)}
           size="icon-xs"
           variant="secondary"
@@ -128,22 +189,36 @@ export function Client() {
         </Button>
       </div>
 
-      <section className="relative flex min-w-0 flex-1 flex-col p-6">
-        <header className="flex items-center justify-between gap-3 pb-2">
-          {topic ? (
-            <div className="flex min-w-0 items-center gap-2 text-foreground">
-              <TopicIcon aria-hidden="true" className="size-4 shrink-0" name={topic.icon} />
-
-              <span className="truncate font-medium">{topic.displayName || topic.topic}</span>
-            </div>
-          ) : (
-            <span />
-          )}
+      <section className="relative flex min-w-0 flex-1 flex-col px-4 py-5 md:p-6 lg:px-9">
+        <header className="flex min-h-11 items-center justify-between gap-3 pb-3">
+          <div className="flex min-w-0 items-center gap-3 text-foreground">
+            <Button
+              aria-controls="ntfy-sidebar"
+              aria-expanded={mobileOpen}
+              aria-label="Open navigation"
+              ref={menuButton}
+              className="shrink-0 md:hidden"
+              onClick={() => setMobileOpen(true)}
+              size="icon-sm"
+              variant="outline"
+            >
+              <Menu className="size-4" />
+            </Button>
+            {topic ? (
+              <div className="flex min-w-0 items-center gap-2">
+                <TopicIcon aria-hidden="true" className="size-4 shrink-0" name={topic.icon} />
+                <h1 className="truncate text-base font-semibold">{topic.displayName || topic.topic}</h1>
+              </div>
+            ) : (
+              <h1 className="text-lg font-semibold tracking-tight">Inbox</h1>
+            )}
+          </div>
           <div className="flex items-center gap-2.25">
             {topic && (
               <>
                 <Button
-                  className="cursor-pointer duration-500 transition-all border-border bg-card enabled:hover:bg-accent"
+                  aria-label={topic.muted ? 'Unmute subscription' : 'Mute subscription'}
+                  className="cursor-pointer transition-colors duration-150 border-border bg-card enabled:hover:bg-accent"
                   disabled={busy}
                   onClick={() => void perform(() => updateTopic(topic.id, !topic.muted))}
                   size="icon-xs"
@@ -154,7 +229,7 @@ export function Client() {
 
                 <Button
                   aria-label="Edit topic"
-                  className="cursor-pointer border-border bg-card transition-all duration-500 enabled:hover:bg-accent"
+                  className="cursor-pointer border-border bg-card transition-colors duration-150 enabled:hover:bg-accent"
                   onClick={() => {
                     setEditing(topic)
                     setDialog({ kind: 'topic' })
@@ -166,7 +241,8 @@ export function Client() {
                 </Button>
 
                 <Button
-                  className="cursor-pointer duration-500 transition-all border-border bg-card enabled:hover:bg-accent"
+                  aria-label="Unsubscribe"
+                  className="cursor-pointer transition-colors duration-150 border-border bg-card enabled:hover:bg-accent"
                   onClick={() =>
                     setDialog({
                       kind: 'confirm',
@@ -190,7 +266,7 @@ export function Client() {
 
             <Button
               aria-label="Publish a notification"
-              className="cursor-pointer duration-500 transition-all rounded-md border border-primary enabled:hover:bg-primary-hover"
+              className="cursor-pointer duration-150 transition-colors rounded-md border border-primary enabled:hover:bg-primary-hover"
               disabled={snapshot.topics.length === 0}
               onClick={() => setDialog({ kind: 'publish' })}
               size="icon-xs"
@@ -209,7 +285,7 @@ export function Client() {
             <span>{data.error}</span>
 
             <Button
-              className="cursor-pointer duration-500 transition-all h-auto p-0 text-[11px] font-normal text-current underline"
+              className="cursor-pointer duration-150 transition-colors h-auto p-0 text-[11px] font-normal text-current underline"
               onClick={data.refresh}
               variant="link"
             >
@@ -225,7 +301,7 @@ export function Client() {
         ) : snapshot.servers.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center px-5 py-12.5 text-center">
             <Button
-              className="cursor-pointer duration-500 transition-all gap-1.75 rounded-md border border-primary text-[11px] font-semibold enabled:hover:bg-primary-hover"
+              className="cursor-pointer duration-150 transition-colors gap-1.75 rounded-md border border-primary text-[11px] font-semibold enabled:hover:bg-primary-hover"
               disabled={!data.snapshot}
               onClick={() => setDialog({ kind: 'server' })}
               size="sm"
@@ -244,7 +320,7 @@ export function Client() {
               >
                 {status.detail}
                 <Button
-                  className="cursor-pointer duration-500 transition-all h-6 p-0 text-[11px] font-normal hover:bg-transparent dark:hover:bg-warning-soft dark:hover:text-warning-foreground"
+                  className="cursor-pointer duration-150 transition-colors h-6 p-0 text-[11px] font-normal hover:bg-transparent dark:hover:bg-warning-soft dark:hover:text-warning-foreground"
                   disabled={busy}
                   onClick={() => void perform(reconnect)}
                   size="sm"
@@ -262,7 +338,7 @@ export function Client() {
               >
                 Subscriptions reconnecting. Select a topic to view connection details.
                 <Button
-                  className="cursor-pointer duration-500 transition-all h-6 p-0 text-[11px] font-normal hover:bg-transparent dark:hover:bg-warning-soft dark:hover:text-warning-foreground"
+                  className="cursor-pointer duration-150 transition-colors h-6 p-0 text-[11px] font-normal hover:bg-transparent dark:hover:bg-warning-soft dark:hover:text-warning-foreground"
                   disabled={busy}
                   onClick={() => void perform(reconnect)}
                   size="sm"
@@ -277,7 +353,7 @@ export function Client() {
               <div className="flex gap-2">
                 <Button
                   className={cn(
-                    'cursor-pointer transition-all duration-500 h-auto min-w-16 rounded-none border-b-2 p-3 text-[11px] font-normal hover:bg-transparent dark:hover:bg-transparent',
+                    'cursor-pointer transition-colors duration-150 h-auto min-w-16 rounded-none border-b-2 p-3 text-[11px] font-normal hover:bg-transparent dark:hover:bg-transparent',
                     !unreadOnly
                       ? 'border-primary font-[650] text-accent-foreground'
                       : 'border-transparent text-muted-foreground'
@@ -290,7 +366,7 @@ export function Client() {
 
                 <Button
                   className={cn(
-                    'cursor-pointer transition-all duration-500 h-auto min-w-16 rounded-none border-b-2 p-3 text-[11px] font-normal hover:bg-transparent dark:hover:bg-transparent',
+                    'cursor-pointer transition-colors duration-150 h-auto min-w-16 rounded-none border-b-2 p-3 text-[11px] font-normal hover:bg-transparent dark:hover:bg-transparent',
                     unreadOnly
                       ? 'border-primary font-bold text-accent-foreground'
                       : 'border-transparent text-muted-foreground'
@@ -310,7 +386,7 @@ export function Client() {
               <div className="flex gap-1.25 items-center">
                 <Button
                   aria-label="Mark all as read"
-                  className="cursor-pointer duration-500 transition-all text-muted-foreground hover:text-primary"
+                  className="cursor-pointer duration-150 transition-colors text-muted-foreground hover:text-primary"
                   disabled={busy}
                   onClick={() => void perform(() => messageAction(null, selected))}
                   size="icon-xs"
@@ -321,7 +397,7 @@ export function Client() {
 
                 <Button
                   aria-label="Reconnect subscriptions"
-                  className="cursor-pointer duration-500 transition-all text-muted-foreground hover:text-primary"
+                  className="cursor-pointer duration-150 transition-colors text-muted-foreground hover:text-primary"
                   disabled={busy}
                   onClick={() => void perform(reconnect)}
                   size="icon-xs"
@@ -340,7 +416,7 @@ export function Client() {
 
               <Input
                 aria-label="Search notifications"
-                className="w-full bg-transparent pl-9 text-[11px] md:text-[11px] text-foreground"
+                className="w-full bg-card/80 pl-9 text-sm text-foreground"
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search…"
                 type="search"
@@ -391,7 +467,7 @@ export function Client() {
 
                   {snapshot.topics.length === 0 && (
                     <Button
-                      className="cursor-pointer duration-500 transition-all gap-1.75 rounded border-border bg-card text-[11px] font-semibold text-accent-foreground enabled:hover:bg-accent"
+                      className="cursor-pointer duration-150 transition-colors gap-1.75 rounded border-border bg-card text-[11px] font-semibold text-accent-foreground enabled:hover:bg-accent"
                       onClick={() => {
                         setEditing(null)
                         setDialog({ kind: 'topic' })

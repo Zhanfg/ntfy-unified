@@ -108,6 +108,13 @@ pub async fn restart(app: &AppHandle) -> Result<(), String> {
 }
 
 fn status(app: &AppHandle, topics: &[Topic], state: &str, detail: Option<String>) {
+    if matches!(state, "connected" | "reconnecting" | "stopped") {
+        super::diagnostics::stage(match state {
+            "connected" => "subscription_stream_connected",
+            "reconnecting" => "subscription_stream_reconnecting",
+            _ => "subscription_stream_stopped",
+        });
+    }
     if let Ok(mut statuses) = app.state::<ServiceState>().statuses.lock() {
         for topic in topics {
             let value = ConnectionStatus {

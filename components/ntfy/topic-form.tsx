@@ -79,7 +79,7 @@ export function TopicForm({ servers, editing, close, saved }: Props) {
       >
         <fieldset className="flex min-w-0 flex-col gap-3.75" disabled={busy}>
           <div className="flex flex-col gap-1.75">
-            <Label className="text-[11px]" htmlFor={`${id}-server`}>
+            <Label className="text-xs" htmlFor={`${id}-server`}>
               Server
             </Label>
 
@@ -90,7 +90,7 @@ export function TopicForm({ servers, editing, close, saved }: Props) {
               value={serverId}
             >
               <SelectTrigger
-                className="w-full cursor-pointer border-border bg-card text-xs text-foreground transition-all duration-500"
+                className="w-full cursor-pointer border-border bg-card text-sm text-foreground transition-colors duration-150"
                 id={`${id}-server`}
               >
                 <SelectValue placeholder="Select a server" />
@@ -101,7 +101,7 @@ export function TopicForm({ servers, editing, close, saved }: Props) {
                   .filter((server) => editing?.serverId === server.id || server.enabled)
                   .map((server) => (
                     <SelectItem
-                      className="cursor-pointer transition-all duration-500"
+                      className="cursor-pointer transition-colors duration-150"
                       key={server.id}
                       value={server.id}
                     >
@@ -113,12 +113,12 @@ export function TopicForm({ servers, editing, close, saved }: Props) {
           </div>
 
           <div className="flex flex-col gap-1.75">
-            <Label className="text-[11px]" htmlFor={`${id}-topic`}>
+            <Label className="text-xs" htmlFor={`${id}-topic`}>
               Topic
             </Label>
 
             <Input
-              className="w-full min-w-0 rounded-md border border-border bg-card p-2.5 text-xs text-foreground md:text-xs"
+              className="w-full min-w-0 rounded-md border border-border bg-card p-2.5 text-sm text-foreground"
               id={`${id}-topic`}
               maxLength={64}
               minLength={1}
@@ -133,31 +133,31 @@ export function TopicForm({ servers, editing, close, saved }: Props) {
           </div>
 
           <div className="flex flex-col gap-1.75">
-            <Label className="text-[11px]" htmlFor={`${id}-display-name`}>
+            <Label className="text-xs" htmlFor={`${id}-display-name`}>
               Display
             </Label>
 
             <Input
-              className="w-full min-w-0 rounded-md border border-border bg-card p-2.5 text-xs text-foreground md:text-xs"
+              className="w-full min-w-0 rounded-md border border-border bg-card p-2.5 text-sm text-foreground"
               id={`${id}-display-name`}
               maxLength={60}
               onChange={(event) => setDisplayName(event.target.value)}
               value={displayName}
             />
 
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Leave blank to use the original topic name.
             </p>
           </div>
 
           <div className="flex flex-col gap-1.75">
-            <Label className="text-[11px]" htmlFor={`${id}-icon`}>
+            <Label className="text-xs" htmlFor={`${id}-icon`}>
               Icon
             </Label>
 
             <Select disabled={busy} onValueChange={(value) => setIcon(value as Icon)} value={icon}>
               <SelectTrigger
-                className="w-full cursor-pointer transition-all duration-500 border-border bg-card text-xs text-foreground"
+                className="w-full cursor-pointer transition-colors duration-150 border-border bg-card text-sm text-foreground"
                 id={`${id}-icon`}
               >
                 <SelectValue placeholder="Select an icon" />
@@ -166,7 +166,7 @@ export function TopicForm({ servers, editing, close, saved }: Props) {
               <SelectContent className="max-h-56" position="popper">
                 {(Object.keys(topicIcons) as Icon[]).map((name) => (
                   <SelectItem
-                    className="cursor-pointer transition-all duration-500"
+                    className="cursor-pointer transition-colors duration-150"
                     key={name}
                     textValue={name.replaceAll('-', ' ')}
                     value={name}
@@ -182,7 +182,7 @@ export function TopicForm({ servers, editing, close, saved }: Props) {
           </div>
 
           {!editing && (
-            <p className="text-[11px] leading-[1.8] text-muted-foreground">
+            <p className="text-xs leading-[1.8] text-muted-foreground">
               Topic permissions are managed by your ntfy server. The display name and icon are
               stored locally.
             </p>
@@ -200,7 +200,7 @@ export function TopicForm({ servers, editing, close, saved }: Props) {
 
         <div className="flex justify-end gap-2 pt-1.75">
           <Button
-            className="cursor-pointer transition-all duration-500"
+            className="cursor-pointer transition-colors duration-150"
             disabled={busy}
             onClick={close}
             size="sm"
@@ -211,7 +211,7 @@ export function TopicForm({ servers, editing, close, saved }: Props) {
           </Button>
 
           <Button
-            className="cursor-pointer transition-all duration-500"
+            className="cursor-pointer transition-colors duration-150"
             disabled={busy || !serverId}
             size="sm"
             type="submit"
