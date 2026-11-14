@@ -8,10 +8,10 @@ the MIT-licensed [Rubix Studios ntfy-app](https://github.com/rubix-studios-pty-l
 
 - **0.0.1 G1 passed:** Linux desktop self-hosted ntfy E2E independently verified
   by the external supervisor. CI built Windows and Linux installers.
-- **0.0.2 G2 in progress:** responsive React inbox/sidebar, graphite-blue
+- **0.0.2 G2 accepted:** responsive React inbox/sidebar, graphite-blue
   design tokens, accessible controls, reduced-motion styling and light animation.
-  Existing ntfy protocol and storage code remain unchanged.
-- 0.0.3: Android native adaptation.
+  External supervisor verified auth, notifications and persistence.
+- **0.0.3 G3 in progress:** Android foreground Rust core reuse, encrypted Keystore and native notification integration; signed installation and device E2E not yet verified.
 - 0.0.4: reconnect/recovery/performance improvements.
 - 0.1.0: six-platform build matrix, with build and device verification statuses
   recorded separately for each platform.
@@ -44,3 +44,5 @@ pnpm exec tauri build
 
 Source commit: `b1035e69fd1b4d67df4490994c2cf289790cce64`.
 See `docs/UPSTREAM.md` and `docs/ALPHA.md`.
+
+G3 technical and signing boundaries: [docs/G3-ANDROID-ARCHITECTURE.md](docs/G3-ANDROID-ARCHITECTURE.md). No unsigned package is advertised as installable.
