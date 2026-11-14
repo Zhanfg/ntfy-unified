@@ -76,8 +76,15 @@ jobs:
         run: bash scripts/ci/g3-mobile-boundaries.sh
       - name: Initialize Tauri Android project without signing material
         run: pnpm exec tauri android init --ci --skip-targets-install
+      - name: Apply Android native insets and assert generated Activity
+        shell: bash
+        run: |
+          bash scripts/android/apply-insets.sh
+          python3 scripts/ci/g3-android-ui-insets.py --generated
       - name: Build release Android arm64 libraries and unsigned APK
         run: pnpm exec tauri android build --apk --target aarch64
+      - name: Assert exported Next device viewport after native build
+        run: python3 scripts/ci/g3-android-ui-insets.py --exported
       - name: Audit unsigned APK artifact and calculate digest
         shell: bash
         run: |
