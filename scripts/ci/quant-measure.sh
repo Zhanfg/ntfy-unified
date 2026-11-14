@@ -24,9 +24,9 @@ capture_focus() {
   local density="$1" iteration="$2" windows activity focus resumed
   windows="$(adb shell dumpsys window windows 2>&1 || true)"
   activity="$(adb shell dumpsys activity activities 2>&1 || true)"
-  focus="$(printf '%s\\n' "$windows" | grep -m1 -E 'mCurrentFocus=' || true)"
-  resumed="$(printf '%s\\n' "$activity" | grep -m1 -E 'topResumedActivity=|mResumedActivity=' || true)"
-  printf 'density=%s probe=%s focus=%s resumed=%s\\n' "$density" "$iteration" "$focus" "$resumed" | tee -a "$OUT/focus-${density}.txt"
+  focus="$(printf '%s\n' "$windows" | grep -m1 -E 'mCurrentFocus=' || true)"
+  resumed="$(printf '%s\n' "$activity" | grep -m1 -E 'topResumedActivity=|mResumedActivity=' || true)"
+  printf 'density=%s probe=%s focus=%s resumed=%s\n' "$density" "$iteration" "$focus" "$resumed" | tee -a "$OUT/focus-${density}.txt"
   [[ "$focus" == *"$PKG"* && "$resumed" == *"$PKG"* ]]
 }
 
@@ -42,7 +42,7 @@ import re, sys, xml.etree.ElementTree as ET
 try:
     for node in ET.parse(sys.argv[1]).iter("node"):
         if "Wait" in (node.get("text",""), node.get("content-desc","")):
-            m = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]", node.get("bounds",""))
+            m = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.get("bounds",""))
             if m:
                 a,b,c,d=map(int,m.groups())
                 print((a+c)//2, (b+d)//2)
@@ -53,10 +53,10 @@ PY_WAIT
 )"
   if [[ -n "$tap" ]]; then
     read -r x y <<< "$tap"
-    printf 'density=%s recovery=%s selecting Wait at %s,%s\\n' "$density" "$recovery" "$x" "$y" | tee -a "$OUT/focus-${density}.txt"
+    printf 'density=%s recovery=%s selecting Wait at %s,%s\n' "$density" "$recovery" "$x" "$y" | tee -a "$OUT/focus-${density}.txt"
     adb shell input tap "$x" "$y" || true
   else
-    printf 'density=%s recovery=%s no Wait action found; bringing app forward\\n' "$density" "$recovery" | tee -a "$OUT/focus-${density}.txt"
+    printf 'density=%s recovery=%s no Wait action found; bringing app forward\n' "$density" "$recovery" | tee -a "$OUT/focus-${density}.txt"
   fi
   adb shell am start -W -n "$PKG/.MainActivity" >> "$OUT/foreground-recovery-${density}.txt" 2>&1 || true
   sleep 3
