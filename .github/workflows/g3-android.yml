@@ -76,6 +76,8 @@ jobs:
         run: bash scripts/ci/g3-mobile-boundaries.sh
       - name: Initialize Tauri Android project without signing material
         run: pnpm exec tauri android init --ci --skip-targets-install
+      - name: Check themed system bars and single native inset source
+        run: python3 scripts/ci/g3-android-ui-insets.py
       - name: Apply Android native insets and assert generated Activity
         shell: bash
         run: |
