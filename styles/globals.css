@@ -197,3 +197,25 @@
   }
   .ntfy-message-card:hover { transform: none; }
 }
+
+/*
+ * G3: dynamic browser safe-area fallback. On Android the native Activity
+ * moves the WebView itself into WindowInsets, so these are normally zero.
+ * No fixed top/bottom bar heights or devicePixelRatio multipliers.
+ */
+.ntfy-app-surface {
+  box-sizing: border-box;
+  padding-block-start: env(safe-area-inset-top, 0px);
+  padding-block-end: env(safe-area-inset-bottom, 0px);
+  padding-inline-start: env(safe-area-inset-left, 0px);
+  padding-inline-end: env(safe-area-inset-right, 0px);
+}
+
+@media (max-width: 767px) and (pointer: coarse) {
+  .ntfy-app-surface header button,
+  .ntfy-sidebar-panel button,
+  .ntfy-sidebar-panel a {
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+  }
+}
