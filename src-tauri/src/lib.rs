@@ -62,6 +62,14 @@ pub fn run() {
             #[cfg(target_os = "android")]
             storage::key::initialize_android_store()?;
 
+            // Android channel failure is nonfatal: received messages still enter
+            // the encrypted Inbox and a delivery error is surfaced to the UI.
+            #[cfg(target_os = "android")]
+            {
+                let ready = ntfy::notifications::initialize_android_channel(app.handle());
+                app.manage(ntfy::notifications::AndroidChannelState { ready });
+            }
+
             app.manage(db::init(app.handle())?);
             app.manage(ntfy::service::ServiceState::new()?);
 
