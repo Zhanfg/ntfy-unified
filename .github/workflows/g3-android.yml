@@ -52,6 +52,22 @@ jobs:
           echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
           echo "NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
+      - name: Expose Android NDK LLVM binutils to vendored OpenSSL
+        shell: bash
+        run: |
+          set -euo pipefail
+          ndk="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          test -x "$ndk/llvm-ranlib"
+          test -x "$ndk/llvm-ar"
+          alias_dir="$RUNNER_TEMP/android-arm64-binutils"
+          mkdir -p "$alias_dir"
+          for name in ranlib ar strip; do
+            test -x "$ndk/llvm-$name"
+            ln -s "$ndk/llvm-$name" "$alias_dir/aarch64-linux-android-$name"
+          done
+          echo "$alias_dir" >> "$GITHUB_PATH"
+          echo "AR_aarch64_linux_android=$ndk/llvm-ar" >> "$GITHUB_ENV"
+          echo "RANLIB_aarch64_linux_android=$ndk/llvm-ranlib" >> "$GITHUB_ENV"
       - run: pnpm install --frozen-lockfile
       - name: Verify Android Cargo dependencies are locked
         run: cargo fetch --locked --manifest-path src-tauri/Cargo.toml --target aarch64-linux-android
