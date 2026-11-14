@@ -34,8 +34,35 @@ for density in 320 480; do
   adb shell dumpsys meminfo "$PKG" > "$OUT/pss-${density}.txt"
   adb logcat -d -v brief -s NtfyInsets:I Tauri/Console:I chromium:I > "$OUT/logcat-${density}.txt"
   adb exec-out screencap -p > "$OUT/screen-${density}.png"
-  adb shell uiautomator dump /sdcard/ntfy-quant.xml > "$OUT/uiautomator-${density}.txt" 2>&1 || fail "uiautomator dump failed at $density"
-  adb exec-out cat /sdcard/ntfy-quant.xml > "$OUT/hierarchy-${density}.xml"
+  # WebView's accessibility subtree may be empty for several seconds after relaunch.
+  # Require both target controls before accepting a dump. Bounded to 20 attempts.
+  ready=0
+  for ui_attempt in $(seq 1 20); do
+    if adb shell uiautomator dump /sdcard/ntfy-quant.xml > "$OUT/uiautomator-${density}.txt" 2>&1 &&
+       adb exec-out cat /sdcard/ntfy-quant.xml > "$OUT/hierarchy-${density}.xml" &&
+       python3 - "$OUT/hierarchy-${density}.xml" <<'PY_READY'
+import sys
+import xml.etree.ElementTree as ET
+try:
+    nodes = ET.parse(sys.argv[1]).iter("node")
+    labels = {
+        n.get(attr, "")
+        for n in nodes
+        for attr in ("text", "content-desc")
+    }
+    sys.exit(0 if {"Open navigation", "Connect"} <= labels else 1)
+except (ET.ParseError, OSError):
+    sys.exit(1)
+PY_READY
+    then
+      ready=1
+      printf 'density=%s accessibility ready on attempt %s/20\n' "$density" "$ui_attempt" | tee "$OUT/accessibility-${density}.txt"
+      break
+    fi
+    printf 'density=%s accessibility not ready (attempt %s/20)\n' "$density" "$ui_attempt" >> "$OUT/accessibility-${density}.txt"
+    sleep 3
+  done
+  test "$ready" -eq 1 || fail "WebView accessibility tree not ready at density $density after 20 bounded attempts (~60s)"
   test -s "$OUT/hierarchy-${density}.xml" || fail "hierarchy empty at $density"
 done
 adb shell wm density reset
@@ -74,18 +101,20 @@ def metric(density):
     def bounds(node):
         m = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.get("bounds",""))
         return [int(x) for x in m.groups()] if m else None
-    menu = next((n for n in nodes if n.get("content-desc")=="Open navigation"),None)
-    connect = next((n for n in nodes if n.get("text")=="Connect"),None)
+    def has_label(node, value):
+        return any(node.get(attr, "") == value for attr in ("text", "content-desc"))
+    menu = next((n for n in nodes if has_label(n, "Open navigation")), None)
+    connect = next((n for n in nodes if has_label(n, "Connect")), None)
     expect(menu is not None, f"{density}: accessible Open navigation button absent")
     expect(connect is not None, f"{density}: accessible Connect button absent")
-    if menu and bounds(menu):
+    if menu is not None and bounds(menu) is not None:
         x1,y1,x2,y2 = bounds(menu)
         d["header_button_top_px"] = y1
         d["header_button_height_px"] = y2-y1
         if native:
             d["header_gap_dp"] = (y1-top)/actual_density
             expect(abs(d["header_gap_dp"]-20)<=2, f"{density}: top gap {d['header_gap_dp']:.2f}dp, expected 20±2")
-    if connect and bounds(connect):
+    if connect is not None and bounds(connect) is not None:
         x1,y1,x2,y2 = bounds(connect)
         d["connect_button_height_px"] = y2-y1
     for k in ("header_button_height_px","connect_button_height_px"):
