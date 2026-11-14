@@ -1,4 +1,6 @@
+#[cfg(desktop)]
 use crate::automation::engine::handle_notification;
+#[cfg(desktop)]
 use crate::automation::matcher::AutomationEvent;
 use crate::db::{DbState, models::DayKey, repo, run};
 use crate::ntfy::models::{Message, Topic};
@@ -6,6 +8,43 @@ use crate::ntfy::models::{Message, Topic};
 use chrono::{Datelike, Local, Timelike, Weekday};
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_notification::NotificationExt;
+
+#[cfg(target_os = "android")]
+use tauri_plugin_notification::{Channel, Importance, Visibility};
+
+#[cfg(target_os = "android")]
+pub(crate) const ANDROID_MESSAGE_CHANNEL: &str = "ntfy-messages";
+
+#[cfg(target_os = "android")]
+pub(crate) struct AndroidChannelState {
+    pub ready: bool,
+}
+
+#[cfg(target_os = "android")]
+pub(crate) fn initialize_android_channel(app: &AppHandle) -> bool {
+    let channel = Channel::builder(ANDROID_MESSAGE_CHANNEL, "Ntfy messages")
+        .description("Messages received from subscribed ntfy topics")
+        .importance(Importance::Default)
+        .visibility(Visibility::Private)
+        .build();
+    match app.notification().create_channel(channel) {
+        Ok(()) => true,
+        Err(_) => {
+            eprintln!("Android notification channel registration failed");
+            false
+        }
+    }
+}
+
+// A pure policy for host unit tests and Android runtime checks.
+#[cfg(any(test, target_os = "android"))]
+fn android_delivery_allowed(
+    channel_ready: bool,
+    state: tauri_plugin_notification::PermissionState,
+) -> bool {
+    channel_ready && state == tauri_plugin_notification::PermissionState::Granted
+}
+
 
 pub(crate) async fn process_notification(
     app: &AppHandle,
@@ -48,12 +87,44 @@ pub(crate) async fn process_notification(
             "notification_attempt_preview_off"
         });
 
+        // Inbox persistence already occurred above; a denied Android permission
+        // or unavailable channel must not drop the message or claim native delivery.
+        #[cfg(target_os = "android")]
+        {
+            let channel_ready = app.state::<AndroidChannelState>().ready;
+            let permission = app.notification().permission_state();
+            let can_deliver = permission
+                .as_ref()
+                .is_ok_and(|state| android_delivery_allowed(channel_ready, *state));
+
+            if !can_deliver {
+                super::diagnostics::stage(if !channel_ready {
+                    "notification_channel_unavailable"
+                } else if permission.is_err() {
+                    "notification_permission_check_error"
+                } else {
+                    "notification_suppressed_permission"
+                });
+                let _ = app.emit(
+                    "ntfy:delivery-error",
+                    if !channel_ready {
+                        "Android notification channel is unavailable. The message is saved in Inbox."
+                    } else {
+                        "Android notifications are disabled. Enable permission in Settings; the message is saved in Inbox."
+                    },
+                );
+                return Ok(());
+            }
+        }
+
         let (display_title, display_body) = notification_content(message, preview);
         let builder = app
             .notification()
             .builder()
             .title(display_title)
             .body(display_body);
+        #[cfg(target_os = "android")]
+        let builder = builder.channel_id(ANDROID_MESSAGE_CHANNEL);
 
         if builder.show().is_err() {
             super::diagnostics::stage("notification_native_error");
@@ -68,6 +139,7 @@ pub(crate) async fn process_notification(
         super::diagnostics::stage("notification_suppressed_schedule");
     }
 
+    #[cfg(desktop)]
     if let Err(_error) = handle_notification(
         app,
         AutomationEvent {
@@ -152,6 +224,16 @@ mod tests {
             "message": "Synthetic body"
         }))
         .unwrap()
+    }
+
+    #[test]
+    fn android_permission_gate_checks_channel_and_runtime_state() {
+        use tauri_plugin_notification::PermissionState;
+        assert!(android_delivery_allowed(true, PermissionState::Granted));
+        assert!(!android_delivery_allowed(false, PermissionState::Granted));
+        assert!(!android_delivery_allowed(true, PermissionState::Denied));
+        assert!(!android_delivery_allowed(true, PermissionState::Prompt));
+        assert!(!android_delivery_allowed(true, PermissionState::PromptWithRationale));
     }
 
     #[test]

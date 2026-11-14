@@ -1,0 +1,43 @@
+name: G3 Android dependency lock refresh
+
+on:
+  push:
+    branches:
+      - feature/g3-android-0.0.3
+    paths:
+      - src-tauri/Cargo.toml
+      - .github/workflows/g3-android-lock.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: g3-android-lock
+  cancel-in-progress: false
+
+jobs:
+  lock:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Resolve Android target dependencies without building or signing
+        run: |
+          set -euo pipefail
+          cargo fetch --manifest-path src-tauri/Cargo.toml --target aarch64-linux-android
+          git diff --check
+      - name: Commit only the machine-generated lockfile
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src-tauri/Cargo.lock
+          if git diff --cached --quiet; then
+            echo "Cargo.lock already resolved"
+          else
+            git commit -m "build(g3): lock Android Keystore dependencies"
+            git push origin HEAD:feature/g3-android-0.0.3
+          fi

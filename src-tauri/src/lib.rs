@@ -1,19 +1,28 @@
 use tauri::Manager;
 
+#[cfg(target_os = "android")]
+mod appearance;
+#[cfg(desktop)]
 mod automation;
+#[cfg(desktop)]
 mod autostart;
 mod commands;
 mod db;
+#[cfg(desktop)]
 mod modules;
 mod ntfy;
 mod storage;
+#[cfg(desktop)]
 mod tray;
+#[cfg(desktop)]
 mod windows;
 
+#[cfg(desktop)]
 use windows::main::{setup_window_events, show_main_window};
 
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(
             tauri::plugin::Builder::<tauri::Wry>::new("local-navigation")
                 .on_navigation(|_webview, url| {
@@ -28,6 +37,18 @@ pub fn run() {
                 })
                 .build(),
         )
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_process::init())
+        .invoke_handler(commands::handler());
+
+    #[cfg(target_os = "android")]
+    let builder = builder.plugin(appearance::init());
+
+    // Desktop-only behavior is intentionally excluded from Android. No app
+    // autostart, hidden tray process, desktop command automation or updater.
+    #[cfg(desktop)]
+    let builder = builder
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {
             show_main_window(app);
         }))
@@ -36,30 +57,44 @@ pub fn run() {
                 .app_name("ntfy-unified")
                 .build(),
         )
-        .plugin(tauri_plugin_notification::init())
-        .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_window_state::Builder::default().build())
-        .invoke_handler(commands::handler())
-        .on_window_event(setup_window_events)
+        .on_window_event(setup_window_events);
+
+    builder
         .setup(|app| {
+            // On Android, credentials are protected by the actual Android
+            // Keystore; never fall back to a plaintext SQLite database.
+            #[cfg(target_os = "android")]
+            storage::key::initialize_android_store()?;
+
+            // Android channel failure is nonfatal: received messages still enter
+            // the encrypted Inbox and a delivery error is surfaced to the UI.
+            #[cfg(target_os = "android")]
+            {
+                let ready = ntfy::notifications::initialize_android_channel(app.handle());
+                app.manage(ntfy::notifications::AndroidChannelState { ready });
+            }
+
             app.manage(db::init(app.handle())?);
             app.manage(ntfy::service::ServiceState::new()?);
 
-            storage::legacy::clear_browser_profile(app.handle())?;
-            tray::system::setup_tray(app)?;
+            #[cfg(desktop)]
+            {
+                storage::legacy::clear_browser_profile(app.handle())?;
+                tray::system::setup_tray(app)?;
+            }
 
             let handle = app.handle().clone();
 
             tauri::async_runtime::spawn(async move {
                 let state = handle.state::<ntfy::service::ServiceState>();
-
                 let _gate = state.gate.lock().await;
 
                 if ntfy::service::start(&handle).await.is_err() {
                     eprintln!("Cannot start the native notification service");
                 }
 
+                #[cfg(desktop)]
                 if db::run(handle.state::<db::DbState>(), |connection| {
                     db::repo::cleanup_logs(connection, 30, 1000)
                 })

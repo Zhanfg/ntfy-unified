@@ -1,0 +1,137 @@
+name: G3 Android emulator quantitative gate
+
+on:
+  pull_request:
+    branches: [develop]
+    paths:
+      - '.github/workflows/android-emulator-quant.yml'
+      - 'scripts/ci/quant-measure.sh'
+      - 'src-tauri/**'
+      - 'android/**'
+      - 'components/**'
+      - 'styles/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: g3-quant-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  emulator-quant:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 100
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-linux-android
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: g3-quant-x86_64
+      - name: Enable KVM access
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          echo "KVM device on this runner:"
+          ls -l /dev/kvm || echo NO_KVM_DEVICE
+          echo "Host CPU virtualization flags (vmx/svm occurrence counts):"
+          for flag in vmx svm; do
+            count="$(grep -oE "(^|[[:space:]])${flag}([[:space:]]|$)" /proc/cpuinfo | wc -l || true)"
+            echo "${flag}_count=${count}"
+          done
+          if ! { test -r /dev/kvm && test -w /dev/kvm; }; then
+            echo "::error::runner host lacks /dev/kvm or readable/writable KVM access; aborting emulator quant gate"
+            exit 1
+          fi
+      - name: Install SDK and NDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t managers < <(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V)
+          test "${#managers[@]}" -gt 0
+          sdkmanager="${managers[${#managers[@]}-1]}"
+          "$sdkmanager" --licenses < <(yes) >/dev/null
+          "$sdkmanager" "platforms;android-36" "build-tools;36.0.0" "ndk;27.2.12479018"
+          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
+          echo "NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
+      - name: Expose LLVM tools for vendored OpenSSL
+        shell: bash
+        run: |
+          set -euo pipefail
+          ndk="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          alias_dir="$RUNNER_TEMP/android-x86_64-binutils"
+          mkdir -p "$alias_dir"
+          for name in ranlib ar strip; do
+            test -x "$ndk/llvm-$name"
+            ln -s "$ndk/llvm-$name" "$alias_dir/x86_64-linux-android-$name"
+          done
+          echo "$alias_dir" >> "$GITHUB_PATH"
+          echo "AR_x86_64_linux_android=$ndk/llvm-ar" >> "$GITHUB_ENV"
+          echo "RANLIB_x86_64_linux_android=$ndk/llvm-ranlib" >> "$GITHUB_ENV"
+      - run: pnpm install --frozen-lockfile
+      - name: Verify existing assertions and Cargo lock
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/ci/g3-mobile-boundaries.sh
+          python3 scripts/ci/g3-android-ui-insets.py
+          cargo fetch --locked --manifest-path src-tauri/Cargo.toml --target x86_64-linux-android
+      - name: Initialize Android without production signing
+        run: pnpm exec tauri android init --ci --skip-targets-install
+      - name: Apply and verify native system insets
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/android/apply-insets.sh
+          python3 scripts/ci/g3-android-ui-insets.py --generated
+      - name: Build emulator-only x86_64 debug APK
+        run: pnpm exec tauri android build --debug --apk --target x86_64
+      - name: Verify exported viewport
+        run: python3 scripts/ci/g3-android-ui-insets.py --exported
+      - name: Prepare emulator test tools
+        run: python3 -m pip install --user Pillow==11.3.0
+      - name: KVM emulator screenshot, accessibility, density and startup gates
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          cores: 2
+          ram-size: 3072M
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          disable-animations: true
+          script: bash scripts/ci/quant-emulator-run.sh
+
+      - name: Capture machine-readable numeric evidence even on test failures
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p quant-out
+          printf '%s\n' "Head: $GITHUB_SHA" "Emulator API34/google_apis/x86_64/pixel_6" "No production signing; no private credentials" > quant-out/provenance.txt
+          if test -f quant-out/measurements.json; then cat quant-out/measurements.json >> "$GITHUB_STEP_SUMMARY"; else echo "Quant measurements missing: test failed before report" >> "$GITHUB_STEP_SUMMARY"; fi
+      - name: Upload quantitative evidence, excluding APK and signing files
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: g3-android-emulator-quant
+          path: quant-out/
+          if-no-files-found: error
+          retention-days: 7

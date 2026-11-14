@@ -1,0 +1,140 @@
+name: G3 Android native arm64 build (unsigned)
+
+on:
+  push:
+    branches:
+      - feature/g3-android-0.0.3
+  pull_request:
+    branches:
+      - develop
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: g3-android-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android-arm64:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: g3-android-aarch64
+      - name: Install Android SDK and NDK for target
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${ANDROID_HOME:-}"
+          mapfile -t managers < <(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V)
+          test "${#managers[@]}" -gt 0
+          SDKMANAGER="${managers[${#managers[@]}-1]}"
+          test -x "$SDKMANAGER"
+          "$SDKMANAGER" --licenses < <(yes) >/dev/null
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "ndk;27.2.12479018"
+          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
+          echo "NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
+      - name: Expose Android NDK LLVM binutils to vendored OpenSSL
+        shell: bash
+        run: |
+          set -euo pipefail
+          ndk="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          test -x "$ndk/llvm-ranlib"
+          test -x "$ndk/llvm-ar"
+          alias_dir="$RUNNER_TEMP/android-arm64-binutils"
+          mkdir -p "$alias_dir"
+          for name in ranlib ar strip; do
+            test -x "$ndk/llvm-$name"
+            ln -s "$ndk/llvm-$name" "$alias_dir/aarch64-linux-android-$name"
+          done
+          echo "$alias_dir" >> "$GITHUB_PATH"
+          echo "AR_aarch64_linux_android=$ndk/llvm-ar" >> "$GITHUB_ENV"
+          echo "RANLIB_aarch64_linux_android=$ndk/llvm-ranlib" >> "$GITHUB_ENV"
+      - run: pnpm install --frozen-lockfile
+      - name: Verify Android Cargo dependencies are locked
+        run: cargo fetch --locked --manifest-path src-tauri/Cargo.toml --target aarch64-linux-android
+      - name: Assert mobile platform and notification permission boundaries
+        shell: bash
+        run: bash scripts/ci/g3-mobile-boundaries.sh
+      - name: Initialize Tauri Android project without signing material
+        run: pnpm exec tauri android init --ci --skip-targets-install
+      - name: Check themed system bars and single native inset source
+        run: python3 scripts/ci/g3-android-ui-insets.py
+      - name: Verify numeric Android inset evaluator using synthetic fixtures only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/android/verify-ui-measurements.py
+          cat > "$RUNNER_TEMP/g3-ui-metrics-good.log" <<'EOF'
+          I/NtfyInsets: bars_top_px=80 bars_bottom_px=70 bars_left_px=0 bars_right_px=0 density=2.0 bars_top_dp=40.0 native_padding_top_px=80 native_padding_bottom_px=70
+          I/Tauri/Console: [ntfy-ui-insets] {"dpr":2.0,"viewport_width_css_px":360,"css_env_top_px":40,"applied_css_safe_top_px":0,"header_button_top_css_px":20,"design_padding_top_css_px":20}
+          EOF
+          python3 scripts/android/verify-ui-measurements.py "$RUNNER_TEMP/g3-ui-metrics-good.log" | grep 'PASS numeric'
+          sed 's/"applied_css_safe_top_px":0/"applied_css_safe_top_px":40/' "$RUNNER_TEMP/g3-ui-metrics-good.log" > "$RUNNER_TEMP/g3-ui-metrics-bad.log"
+          if python3 scripts/android/verify-ui-measurements.py "$RUNNER_TEMP/g3-ui-metrics-bad.log"; then
+            echo "ERROR: double-inset fixture was incorrectly accepted" >&2
+            exit 1
+          fi
+          echo "PASS: synthetic numeric parser accepts single inset, rejects double inset"
+      - name: Apply Android native insets and assert generated Activity
+        shell: bash
+        run: |
+          bash scripts/android/apply-insets.sh
+          python3 scripts/ci/g3-android-ui-insets.py --generated
+      - name: Build release Android arm64 libraries and unsigned APK
+        run: pnpm exec tauri android build --apk --target aarch64
+      - name: Assert exported Next device viewport after native build
+        run: python3 scripts/ci/g3-android-ui-insets.py --exported
+      - name: Audit unsigned APK artifact and calculate digest
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t packages < <(find src-tauri/gen/android/app/build/outputs/apk -type f -name '*unsigned.apk' | sort)
+          if [ "${#packages[@]}" -ne 1 ]; then
+            echo "Expected exactly one unsigned release APK, found ${#packages[@]}." >&2
+            exit 1
+          fi
+          apk="${packages[0]}"
+          aapt2="$ANDROID_HOME/build-tools/36.0.0/aapt2"
+          test -x "$aapt2"
+          "$aapt2" dump permissions "$apk" | tee android-manifest-permissions.txt
+          grep -F 'android.permission.POST_NOTIFICATIONS' android-manifest-permissions.txt
+          echo "PASS: final merged Android manifest declares POST_NOTIFICATIONS"
+          echo "Unsigned APK file: $apk"
+          stat -c 'Unsigned APK bytes: %s' "$apk"
+          sha256sum "$apk" | tee android-sha256.txt
+          echo "UNSIGNED_APK_PATH=$apk" >> "$GITHUB_ENV"
+          echo "#### Android G3 unsigned native build" >> "$GITHUB_STEP_SUMMARY"
+          echo "Commit: $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+          echo "File: $apk" >> "$GITHUB_STEP_SUMMARY"
+          stat -c 'Bytes: %s' "$apk" >> "$GITHUB_STEP_SUMMARY"
+          cat android-sha256.txt >> "$GITHUB_STEP_SUMMARY"
+          echo "Not installable or device-verified until secure signing and real-device E2E." >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload unsigned Android build for controlled signing only
+        uses: actions/upload-artifact@v4
+        with:
+          name: ntfy-unified-0.0.3-android-arm64-unsigned
+          path: |
+            ${{ env.UNSIGNED_APK_PATH }}
+            android-sha256.txt
+            android-manifest-permissions.txt
+          if-no-files-found: error
+          retention-days: 7
