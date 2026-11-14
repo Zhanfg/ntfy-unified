@@ -1,4 +1,6 @@
+#[cfg(desktop)]
 use crate::automation::engine::handle_notification;
+#[cfg(desktop)]
 use crate::automation::matcher::AutomationEvent;
 use crate::db::{DbState, models::DayKey, repo, run};
 use crate::ntfy::models::{Message, Topic};
@@ -68,6 +70,7 @@ pub(crate) async fn process_notification(
         super::diagnostics::stage("notification_suppressed_schedule");
     }
 
+    #[cfg(desktop)]
     if let Err(_error) = handle_notification(
         app,
         AutomationEvent {

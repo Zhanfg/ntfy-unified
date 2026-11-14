@@ -1,7 +1,7 @@
 {
   "name": "ntfy-unified",
   "title": "ntfy-unified",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Lightweight cross-platform ntfy client (desktop Alpha)",
   "license": "MIT",
   "private": true,

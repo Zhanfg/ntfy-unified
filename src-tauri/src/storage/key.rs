@@ -1,4 +1,7 @@
+#[cfg(not(target_os = "android"))]
 use keyring::{Entry, Error};
+#[cfg(target_os = "android")]
+use keyring_core::{Entry, Error};
 use zeroize::Zeroizing;
 
 const SERVICE: &str = "cc.axymorrsen.ntfyunified";
@@ -37,4 +40,19 @@ pub fn database_key(existing_database: bool) -> Result<Zeroizing<String>, String
         Err(Error::NoEntry) => Err("The database key is missing. Restore the original operating system credential or database backup. No data has been reset.".to_string()),
         Err(_) => Err("Unlock the operating system credential store and restart Ntfy. No plaintext fallback is permitted.".to_string()),
     }
+}
+
+#[cfg(target_os = "android")]
+pub fn initialize_android_store() -> Result<(), String> {
+    // Android's app context is initialized by the Tauri mobile runtime.
+    // This Store encrypts SharedPreferences with an Android Keystore key.
+    use android_native_keyring_store::Store;
+    use keyring_core::set_default_store;
+
+    let store = Store::new_with_configuration(&std::collections::HashMap::from([
+        ("name", "ntfy-unified"),
+    ]))
+    .map_err(|_| "Cannot initialize Android Keystore-backed credential storage".to_string())?;
+    set_default_store(store);
+    Ok(())
 }
