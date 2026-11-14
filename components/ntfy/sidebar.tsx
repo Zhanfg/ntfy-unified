@@ -1,5 +1,7 @@
 'use client'
 
+import { useEffect, useState } from 'react'
+
 import {
   Bell,
   BellOff,
@@ -38,6 +40,13 @@ export function Sidebar({
   addTopic,
   preferences,
 }: Props) {
+  const [android, setAndroid] = useState(false)
+  useEffect(() => {
+    // Native Android WebView uses an Android UA; avoid rendering desktop-only
+    // automation links whose native IPC actions do not exist on mobile.
+    setAndroid(/\bAndroid\b/i.test(navigator.userAgent))
+  }, [])
+
   const unread = snapshot.topics.reduce((total, topic) => total + topic.unread, 0)
   const status = (topic: Topic) => snapshot.statuses.find((status) => status.topicId === topic.id)
 
@@ -183,39 +192,44 @@ export function Sidebar({
           </Button>
         )}
 
-        <Button
-          asChild
-          className="cursor-pointer duration-150 transition-colors rounded"
-          size="icon-xs"
-          variant="outline"
-        >
-          <a aria-label="Automations" title="Automations" href="/automation/">
-            <Workflow className="size-3" />
-          </a>
-        </Button>
-
-        <Button
-          asChild
-          className="cursor-pointer duration-150 transition-colors rounded"
-          size="icon-xs"
-          variant="outline"
-        >
-          <a aria-label="Logs" title="Logs" href="/logs/">
-            <ScrollText className="size-3" />
-          </a>
-        </Button>
-
-        <Button
-          asChild
-          className="cursor-pointer duration-150 transition-colors rounded"
-          size="icon-xs"
-          variant="outline"
-        >
-          <a aria-label="Webhooks" title="Webhooks" href="/webhook/">
-            <Webhook className="size-3" />
-          </a>
-        </Button>
-
+        {!android && (
+          <div className="flex gap-1.5" aria-label="Desktop-only tools">
+          <Button
+            asChild
+            className="cursor-pointer duration-150 transition-colors rounded"
+            size="icon-xs"
+            variant="outline"
+          >
+            <a aria-label="Automations" title="Automations" href="/automation/">
+              <Workflow className="size-3" />
+            </a>
+          </Button>
+  
+          <Button
+            asChild
+            className="cursor-pointer duration-150 transition-colors rounded"
+            size="icon-xs"
+            variant="outline"
+          >
+            <a aria-label="Logs" title="Logs" href="/logs/">
+              <ScrollText className="size-3" />
+            </a>
+          </Button>
+  
+          <Button
+            asChild
+            className="cursor-pointer duration-150 transition-colors rounded"
+            size="icon-xs"
+            variant="outline"
+          >
+            <a aria-label="Webhooks" title="Webhooks" href="/webhook/">
+              <Webhook className="size-3" />
+            </a>
+          </Button>
+  
+  
+          </div>
+        )}
         <Button
           asChild
           className="cursor-pointer duration-150 transition-colors rounded"
