@@ -38,14 +38,17 @@ jobs:
         with:
           workspaces: src-tauri
           key: g3-android-aarch64
-      - uses: android-actions/setup-android@v3
       - name: Install Android SDK and NDK for target
         shell: bash
         run: |
           set -euo pipefail
           test -n "${ANDROID_HOME:-}"
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;27.2.12479018"
+          mapfile -t managers < <(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V)
+          test "${#managers[@]}" -gt 0
+          SDKMANAGER="${managers[${#managers[@]}-1]}"
+          test -x "$SDKMANAGER"
+          "$SDKMANAGER" --licenses < <(yes) >/dev/null
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "ndk;27.2.12479018"
           echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
           echo "NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
