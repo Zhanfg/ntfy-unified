@@ -38,6 +38,7 @@ jobs:
         with:
           workspaces: src-tauri
           key: g3-android-aarch64
+      - uses: android-actions/setup-android@v3
       - name: Install Android SDK and NDK for target
         shell: bash
         run: |
